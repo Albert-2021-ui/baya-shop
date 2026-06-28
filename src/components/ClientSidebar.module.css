@@ -1,0 +1,736 @@
+/* Sidebar overlay background with blur */
+.sidebarOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 15, 36, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.showOverlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Left sidebar panel - Luxury Dark Theme */
+.clientSidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 400px;
+  background: rgba(10, 15, 30, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  color: #f1f5f9;
+}
+
+.openSidebar {
+  transform: translateX(0);
+}
+
+/* Header inside sidebar */
+.sidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.brandTitle {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ffffff;
+}
+
+.brandAccent {
+  color: var(--primary, #FF7A00);
+}
+
+.sidebarCloseBtn {
+  background: transparent;
+  border: none;
+  font-size: 2rem;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.sidebarCloseBtn:hover {
+  color: var(--primary, #FF7A00);
+  transform: scale(1.1);
+}
+
+/* User Greeting section */
+.userMiniProfile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.userAvatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF9E43 0%, #FF7A00 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(255, 122, 0, 0.3);
+}
+
+.userMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.userWelcome {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.userName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.loyaltyBadge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.bronze {
+  background: rgba(205, 127, 50, 0.2);
+  color: #cd7f32;
+  border: 1px solid rgba(205, 127, 50, 0.4);
+}
+
+.argent {
+  background: rgba(192, 192, 192, 0.2);
+  color: #e2e8f0;
+  border: 1px solid rgba(192, 192, 192, 0.4);
+}
+
+.or {
+  background: rgba(212, 175, 55, 0.2);
+  color: #ffd700;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+}
+
+/* Sidebar Tab buttons */
+.sidebarTabs {
+  display: flex;
+  padding: 12px 24px;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sidebarTab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.sidebarTab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+}
+
+.tabActive {
+  background: rgba(255, 122, 0, 0.1);
+  border-color: rgba(255, 122, 0, 0.2);
+  color: var(--primary, #FF7A00);
+}
+
+.tabIcon {
+  font-size: 1.15rem;
+}
+
+/* Sidebar body scrollable area */
+.sidebarContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Scrollbar styles for dark sidebar */
+.sidebarContent::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebarContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebarContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+.sidebarContent::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.sectionSubtitle {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+/* Forms grid inside sidebar */
+.sidebarForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inputGroup label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inputGroup input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.inputGroup input:focus {
+  border-color: var(--primary, #FF7A00);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.15);
+}
+
+.saveProfileBtn {
+  background: linear-gradient(135deg, #FF9E43 0%, #FF7A00 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.25);
+  margin-top: 10px;
+}
+
+.saveProfileBtn:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 122, 0, 0.35);
+}
+
+/* Orders History inside sidebar */
+.ordersSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emptyOrders {
+  text-align: center;
+  padding: 40px 10px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.emptyOrdersSub {
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
+.ordersList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orderCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orderCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.orderRef {
+  font-family: monospace;
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 0.85rem;
+}
+
+.orderStatusBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.orderCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orderDetailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.orderDate {
+  color: #94a3b8;
+}
+
+.orderPrice {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.pdfDownloadBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 122, 0, 0.4);
+  color: var(--primary, #FF7A00);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pdfDownloadBtn:hover {
+  background: var(--primary, #FF7A00);
+  color: white;
+  border-color: var(--primary, #FF7A00);
+}
+
+/* Loyalty VIP Card Redesign */
+.loyaltySection {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Virtual Golden card styled like credit card */
+.vipCard {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+  color: #2c2517;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(186, 144, 43, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.vipCard:hover {
+  transform: translateY(-4px) rotate(1deg);
+  box-shadow: 0 15px 35px rgba(186, 144, 43, 0.45);
+}
+
+.vipCardBgOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 80%);
+  pointer-events: none;
+}
+
+.vipCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.vipCardBrand {
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.vipCardChip {
+  width: 38px;
+  height: 28px;
+  background: linear-gradient(135deg, #eaeaea 0%, #a2a2a2 100%);
+  border-radius: 4px;
+  position: relative;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+}
+
+.vipCardChip::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 2px;
+}
+
+.vipCardNumber {
+  font-family: monospace;
+  font-size: 1.3rem;
+  letter-spacing: 2px;
+  font-weight: bold;
+  text-align: center;
+  margin: 12px 0;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+}
+
+.vipCardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.vipCardHolder, .vipCardPoints {
+  display: flex;
+  flex-direction: column;
+}
+
+.cardLabel {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: rgba(44, 37, 23, 0.7);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.cardVal {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Tier info container */
+.tierInfoBox {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.tierGrid {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.tierLabel {
+  display: block;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.tierName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.progressBarContainer {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.progressBar {
+  height: 100%;
+  background: linear-gradient(90deg, #bf953f 0%, #ffd700 100%);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.loyaltyExplain {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+/* Sidebar Footer (Admin Area) */
+.sidebarFooter {
+  padding: 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Admin connection trigger button */
+.triggerLoginBtn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.triggerLoginBtn:hover {
+  background: rgba(255, 122, 0, 0.05);
+  border-color: rgba(255, 122, 0, 0.4);
+  color: var(--primary, #FF7A00);
+}
+
+.lockIcon {
+  font-size: 0.95rem;
+}
+
+/* Admin Active State */
+.adminStatusBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adminGreeting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.adminPulse {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.adminActions {
+  display: flex;
+  gap: 8px;
+}
+
+.adminDashboardLink {
+  flex: 1;
+  background: var(--primary, #FF7A00);
+  color: white;
+  text-align: center;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: opacity 0.2s ease;
+}
+
+.adminDashboardLink:hover {
+  opacity: 0.9;
+}
+
+.adminLogoutBtn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adminLogoutBtn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Compact Admin login form inside sidebar */
+.adminLoginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.adminFormHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.cancelLoginBtn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.loginFormError {
+  font-size: 0.7rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.loginFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loginFields input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: white;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.loginFields input:focus {
+  border-color: var(--primary, #FF7A00);
+}
+
+.loginFields button {
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.loginFields button:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .clientSidebar {
+    width: 100%;
+  }
+}

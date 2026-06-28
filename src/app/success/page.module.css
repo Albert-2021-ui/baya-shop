@@ -1,0 +1,124 @@
+.successLayout {
+  max-width: 680px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 40px;
+  animation: fadeIn var(--transition-normal);
+}
+
+.successIcon {
+  font-size: 4rem;
+  color: var(--success);
+  margin-bottom: 20px;
+  display: inline-block;
+  animation: popIcon 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIcon {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.successTitle {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.successText {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.orderDetailsCard {
+  padding: 24px;
+  text-align: left;
+  margin-bottom: 32px;
+}
+
+.detailsHeader {
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-bottom: 1px solid var(--bg-tertiary);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.infoRowStrong {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0 0 0;
+  border-top: 1px solid var(--bg-tertiary);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.itemsSummary {
+  margin-top: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.summaryItemLine {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.btnGroup {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.actionBtn {
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.downloadInvoiceBtn {
+  background: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.downloadInvoiceBtn:hover {
+  background: rgba(255, 122, 0, 0.08);
+  box-shadow: 0 0 15px rgba(255, 122, 0, 0.15);
+}
+
+.backHomeBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .btnGroup {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .actionBtn {
+    width: 100%;
+  }
+}

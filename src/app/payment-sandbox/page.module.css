@@ -1,0 +1,147 @@
+.sandboxContainer {
+  max-width: 520px;
+  margin: 60px auto;
+  padding: 40px;
+  animation: fadeIn var(--transition-normal);
+}
+
+.gatewayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--bg-tertiary);
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.gatewayName {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.fedapayColor {
+  color: #10B981;
+}
+
+.cinetpayColor {
+  color: #00A6FF;
+}
+
+.badgeSandbox {
+  background: rgba(245, 158, 11, 0.15);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.orderBrief {
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.briefLabel {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.briefVal {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.instructionsCard {
+  background: rgba(255, 122, 0, 0.04);
+  border: 1px solid rgba(255, 122, 0, 0.15);
+  padding: 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.instructionsCard b {
+  color: var(--text-primary);
+}
+
+.paymentMethodsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.methodBtn {
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--bg-tertiary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.methodBtn:hover {
+  background: var(--bg-tertiary);
+}
+
+.methodBtnActive {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.momoGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.providerBtn {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--bg-tertiary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.providerActive {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.payBtn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-top: 20px;
+}
+
+.loadingSpinnerOverlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0;
+}

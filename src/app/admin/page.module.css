@@ -1,0 +1,502 @@
+.adminContainer {
+  margin-top: 40px;
+  animation: fadeIn var(--transition-normal);
+}
+
+.adminHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 16px;
+}
+
+.adminTitle {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.adminLayout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 30px;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tabBtn {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabBtn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.tabBtnActive {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.2);
+}
+
+.contentArea {
+  min-height: 500px;
+}
+
+/* Login Screen Styles */
+.loginContainer {
+  max-width: 420px;
+  margin: 80px auto;
+  padding: 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: modalScale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.loginLogo {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+.loginLogoSub {
+  color: var(--primary);
+}
+
+.loginTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: -10px;
+}
+
+.loginError {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error);
+  color: #ff6b6b;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Dashboard Home view */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.statCard {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--text-muted);
+}
+
+.statCardRevenue::before { background: var(--primary); }
+.statCardOrders::before { background: #3B82F6; }
+.statCardAvg::before { background: #10B981; }
+.statCardStock::before { background: #EF4444; }
+
+.statLabel {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.statVal {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.statChange {
+  font-size: 0.75rem;
+  color: var(--success);
+}
+
+/* Chart Styles - SVG/CSS */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+
+.chartCard {
+  padding: 24px;
+}
+
+.chartContainer {
+  height: 200px;
+  position: relative;
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+
+.chartBarWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.chartBar {
+  width: 70%;
+  max-width: 30px;
+  background: linear-gradient(180deg, rgba(255, 122, 0, 0.8) 0%, rgba(255, 122, 0, 0.1) 100%);
+  border-radius: 6px 6px 0 0;
+  transition: height 1s ease, opacity 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.chartBar:hover {
+  opacity: 1;
+  background: linear-gradient(180deg, #FF7A00 0%, rgba(255, 122, 0, 0.3) 100%);
+  box-shadow: 0 0 12px rgba(255, 122, 0, 0.4);
+}
+
+.chartTooltip {
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.chartBar:hover .chartTooltip {
+  opacity: 1;
+}
+
+.chartLabel {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* Category Pie List representation */
+.pieList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pieItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.pieCategoryColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+/* Tables styling */
+.cardTitle {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.th {
+  padding: 14px 16px;
+  border-bottom: 2px solid var(--bg-primary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  background-color: var(--bg-tertiary);
+}
+
+.td {
+  padding: 16px;
+  border-bottom: 1px solid var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.tr:hover {
+  background: var(--bg-primary);
+}
+
+/* Badges for order status */
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+.statusPending { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+.statusShipped { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.statusDelivered { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.statusCanceled { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+
+/* Status selector drop */
+.statusSelect {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 6px;
+  border-radius: 6px;
+  outline: none;
+  font-size: 0.85rem;
+}
+
+/* Products Management view */
+.productRow {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 30px;
+}
+
+.formCard {
+  padding: 24px;
+  height: fit-content;
+}
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.submitBtn {
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+/* Real-time Image Preview */
+.imagePreviewContainer {
+  width: 100%;
+  height: 140px;
+  border-radius: 8px;
+  border: 1px dashed var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-primary);
+}
+
+.previewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.previewPlaceholder {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Inspect Order Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(4, 6, 15, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modalContent {
+  max-width: 680px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 30px;
+  animation: modalScale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modalCloseBtn:hover {
+  color: #fff;
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.modalSection {
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.modalSectionTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.orderItemRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+.orderItemRow:last-child {
+  border-bottom: none;
+}
+
+.inspectActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.inspectBtn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.inspectBtnSecondary {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.inspectBtnSecondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes modalScale {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 1024px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .adminLayout {
+    grid-template-columns: 1fr;
+  }
+  .productRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .modalGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
