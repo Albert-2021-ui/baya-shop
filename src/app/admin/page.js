@@ -193,7 +193,7 @@ export default function AdminPage() {
   };
 
   // Génération du reçu PDF pour l'inspecteur
-  const generatePDFForOrder = (order) => {
+  const generatePDFForOrder =async(order) => {
     if (!order) return;
 
     const doc = new jsPDF({
@@ -311,7 +311,28 @@ export default function AdminPage() {
     doc.text('Merci de votre confiance pour votre achat chez BAYA SHOP.', 105, 275, null, null, 'center');
     doc.text('Ceci est une facture acquittée électroniquement.', 105, 280, null, null, 'center');
 
-    doc.save(`Facture_${order.payment.reference}.pdf`);
+    const pdfArrayBuffer = doc.output("arraybuffer");
+
+    const uint8Array = new Uint8Array(pdfArrayBuffer);
+
+    let binary = "";
+    uint8Array.forEach(byte => {
+    binary += String.fromCharCode(byte);
+    });
+
+    const pdfBase64 = btoa(binary);
+
+  await fetch("/api/send-order-email", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    order,
+    pdf: pdfBase64
+  })
+});
+doc.save(`Facture_${order.payment.reference}.pdf`);
   };
 
   // Calculs statistiques
@@ -419,7 +440,7 @@ export default function AdminPage() {
 
   // DASHBOARD D'ADMINISTRATION POUR ALBERT
   return (
-    <div className="container" className={styles.adminContainer}>
+    <div className={styles.adminContainer}>
       {/* Modal Inspecteur de commande */}
       {inspectingOrder && (
         <div className={styles.modalOverlay}>

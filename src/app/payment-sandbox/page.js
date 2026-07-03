@@ -72,7 +72,7 @@ function SandboxContent() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(orderPayload)
+          body: JSON.stringify({ orderData: orderPayload })
         });
 
         if (res.ok) {

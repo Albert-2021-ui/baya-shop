@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import fs from 'fs/promises';
 import path from 'path';
+import { generateInvoicePDF } from './generateInvoicePDF.js';
 
 const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json');
 
@@ -10,9 +11,9 @@ export async function sendConfirmationEmail(order) {
       throw new Error('Commande manquante pour l\'envoi d\'e-mail.');
     }
 
-    const customerEmail = order.customer.email;
-    const customerName = `${order.customer.firstName} ${order.customer.lastName}`;
-    const orderRef = order.payment.reference;
+    const customerEmail = order?.customer?.email;
+    const customerName = `${order?.customer?.firstName} ${order?.customer?.lastName}`;
+    const orderRef = order?.payment?.reference;
     
     // Formatter le prix pour l'email
     const formatPrice = (price) => {
@@ -25,7 +26,7 @@ export async function sendConfirmationEmail(order) {
     };
 
     // 1. Générer le contenu HTML du courriel
-    const itemsRows = order.items.map(item => `
+    const itemsRows = order?.items?.map(item => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eeeeee;">${item.name}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eeeeee; text-align: center;">${item.quantity}</td>
@@ -74,25 +75,23 @@ export async function sendConfirmationEmail(order) {
                 <tr>
                   <td style="padding: 5px 0; color: #666666;">Mode de Paiement :</td>
                   <td style="padding: 5px 0; text-align: right; text-transform: uppercase;">
-                    ${order.payment.method === 'momo' 
-                      ? `Mobile Money (${order.payment.provider})` 
-                      : order.payment.method === 'direct_transfer'
-                      ? `Transfert Direct MM (${order.payment.provider.replace('transfert_direct_', '')})`
-                      : order.payment.method === 'bank_transfer'
-                      ? 'Virement Bancaire Manuel'
-                      : order.payment.method === 'external_gateway'
-                      ? `Passerelle (${order.payment.provider})`
+                    ${order?.payment?.method === 'momo' 
+                      ? `Mobile Money (${order?.payment?.provider})` 
+                      : order?.payment?.method === 'direct_transfer'
+                      ? `Transfert Direct MM (${order?.payment?.provider.replace('transfert_direct_', '')})`
+                      : order?.payment?.method === 'external_gateway'
+                      ? `Passerelle (${order?.payment?.provider})`
                       : 'Carte Bancaire'}
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 5px 0; color: #666666;">Adresse de livraison :</td>
-                  <td style="padding: 5px 0; text-align: right;">${order.customer.address}, ${order.customer.city}</td>
+                  <td style="padding: 5px 0; text-align: right;">${order?.customer?.address}, ${order?.customer?.city}</td>
                 </tr>
                 <tr>
                   <td style="padding: 5px 0; color: #666666;">Statut :</td>
                   <td style="padding: 5px 0; font-weight: bold; color: #10b981; text-align: right;">
-                    ${order.status === 'pending_verification' ? 'À VÉRIFIER (TRANSFERT EN COURS)' : 'PAYÉ'}
+                    ${order?.status === 'pending_verification' ? 'À VÉRIFIER (TRANSFERT EN COURS)' : 'PAYÉ'}
                   </td>
                 </tr>
               </table>
@@ -118,15 +117,15 @@ export async function sendConfirmationEmail(order) {
             <div style="width: 250px; margin-left: auto; font-size: 14px;">
               <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #666666;">
                 <span>Sous-total:</span>
-                <span style="text-align: right;">${formatPrice(order.subtotal)}</span>
+                <span style="text-align: right;">${formatPrice(order?.subtotal)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #666666;">
                 <span>Livraison:</span>
-                <span style="text-align: right;">${order.shippingFee === 0 ? 'Gratuit' : formatPrice(order.shippingFee)}</span>
+                <span style="text-align: right;">${order?.shippingFee === 0 ? 'Gratuit' : formatPrice(order?.shippingFee)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; padding: 10px 0; font-weight: bold; font-size: 16px; border-top: 1px solid #e9ecef; margin-top: 5px;">
                 <span style="color: #080b1a;">Total :</span>
-                <span style="color: #ff7a00; text-align: right;">${formatPrice(order.total)}</span>
+                <span style="color: #ff7a00; text-align: right;">${formatPrice(order?.total)}</span>
               </div>
             </div>
             
@@ -158,12 +157,35 @@ export async function sendConfirmationEmail(order) {
           }
         });
 
-        sentInfo = await transporter.sendMail({
-          from: process.env.SMTP_FROM || '"BAYA SHOP" <no-reply@bayashop.com>',
+        // Générer le PDF de la quittance côté serveur
+        let pdfBuffer = null;
+        try {
+          pdfBuffer = await generateInvoicePDF(order);
+          console.log(`PDF de quittance généré (${pdfBuffer.length} octets)`);
+        } catch (pdfErr) {
+          console.error('Erreur lors de la génération du PDF de quittance:', pdfErr);
+        }
+
+        console.log(`Envoi de l'email de confirmation à ${customerEmail}...`);
+        const mailOptions = {
+          from:process.env.SMTP_USER || '"BAYA SHOP" <eugenebaya6@gmail.com>',
           to: customerEmail,
           subject: emailSubject,
-          html: emailHtml
-        });
+          html: emailHtml,
+        };
+
+        // Attacher le PDF si la génération a réussi
+        if (pdfBuffer) {
+          mailOptions.attachments = [
+            {
+              filename: `Facture_${orderRef}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf',
+            }
+          ];
+        }
+
+        sentInfo = await transporter.sendMail(mailOptions);
         
         emailStatus = 'sent_via_smtp';
         console.log(`E-mail envoyé avec succès via SMTP à ${customerEmail}`);

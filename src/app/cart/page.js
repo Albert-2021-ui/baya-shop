@@ -7,7 +7,7 @@ import { useCart } from '../../context/CartContext';
 import styles from './page.module.css';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, editCart,getCartTotal, isLoaded } = useCart();
+  const { cart, removeFromCart, updateQuantity,getCartTotal, isLoaded } = useCart();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
@@ -69,7 +69,7 @@ export default function CartPage() {
         {/* Liste des articles */}
         <div className={styles.cartItemsList}>
           {cart.map((item) => (
-            <div key={item.id} className={`${styles.cartItem} glass-card`}>
+            <div key={item.id}  className={`${styles.cartItem} glass-card`}>
               <div className={styles.itemImageWrapper}>
                 <img src={item.image} alt={item.name} className={styles.itemImage} />
               </div>
@@ -105,17 +105,10 @@ export default function CartPage() {
               >
                 🗑️
               </button> 
-              <div className={styles.editCartBtnContainer}>
-              <button
-                onClick={() => editCart(item)}
-                className={styles.editCartBtn}
-                title="Modifier le panier">
-                Modifier
-              </button>
-            </div>
-            </div>
-            ))}
-        </div>
+               </div> 
+            ))};
+           </div> 
+
 
         {/* Résumé de la commande */}
         <div className={`${styles.summaryCard} glass-card`}>

@@ -1,15 +1,8 @@
-import { Outfit } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "../context/CartContext";
 import { AppProvider } from "../context/AppContext";
 import Header from "../components/Header";
 import ClientSidebar from "../components/ClientSidebar";
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-outfit",
-});
 
 export const metadata = {
   title: "BAYA SHOP - Boutique E-Commerce Moderne",
@@ -18,7 +11,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="fr"   data-croll-behavior="smooth"  className={outfit.variable}>
+    <html lang="fr">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <AppProvider>
           <CartProvider>
@@ -30,7 +31,7 @@ export default function RootLayout({ children }) {
             <footer className="footer">
               <div className="container footer-content">
                 <p>&copy; {new Date().getFullYear()} BAYA SHOP. Tous droits réservés.</p>
-                <p>Conçu par Albert BAYA -Benin & international</p>
+                <p>Conçu par Albert BAYA - Bénin & international</p>
               </div>
             </footer>
           </CartProvider>
@@ -39,3 +40,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+
