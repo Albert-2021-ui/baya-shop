@@ -438,29 +438,46 @@ export default function CheckoutPage() {
               {/* TRANSFERT DIRECT MOBILE MONEY */}
               {paymentGateway === 'direct_transfer' && (
                 <div className="animate-fade" style={{ textAlign: 'left' }}>
-                  <p style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '12px' }}>
-                    Faites un transfert Mobile Money direct du montant de <b>{formatPrice(total)}</b> sur l'un de nos numéros réels :
-                  </p>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                    {config.momoNumbers.map((momo, idx) => (
-                      <div key={idx} style={{ background: '#FFFFFF', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: '600', fontSize: '0.85rem' }}>{momo.operator}</span>
-                        <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.05rem' }}>{momo.number}</span>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '20px' }}>
+                    <p style={{ fontWeight: '600', color: 'var(--primary)', marginBottom: '12px' }}>
+                      Paiement Manuel via Mobile Money
+                    </p>
+                    <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', marginBottom: '8px' }}>
+                      Veuillez transférer le montant exact de <b>{formatPrice(total)}</b> sur l'un de nos numéros :
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                      <div style={{ background: '#FFFFFF', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: '700', color: '#000', display: 'block', fontSize: '0.95rem' }}>MTN MoMo / Moov / Orange</span>
+                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Numéro Principal</span>
+                        </div>
+                        <span style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '1.2rem', letterSpacing: '1px' }}>01 63 09 74 98</span>
                       </div>
-                    ))}
+                      <div style={{ background: '#FFFFFF', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: '700', color: '#000', display: 'block', fontSize: '0.95rem' }}>MTN MoMo / Moov / Orange</span>
+                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Numéro Secondaire</span>
+                        </div>
+                        <span style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '1.2rem', letterSpacing: '1px' }}>01 53 37 49 53</span>
+                      </div>
+                    </div>
                   </div>
 
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                    Après avoir effectué le dépôt, remplissez le formulaire ci-dessous pour que nous puissions valider votre paiement :
+                  </p>
+
                   <div className="input-group">
-                    <label className="input-label">Opérateur utilisé *</label>
+                    <label className="input-label">Opérateur utilisé pour le transfert *</label>
                     <select
                       value={directMomoDetails.operator}
                       onChange={(e) => setDirectMomoDetails({ ...directMomoDetails, operator: e.target.value })}
                       className="input-field"
                     >
-                      <option value="Orange">Orange Money</option>
                       <option value="MTN">MTN MoMo</option>
                       <option value="Moov">Moov Money</option>
+                      <option value="Orange">Orange Money</option>
                       <option value="Wave">Wave</option>
                     </select>
                   </div>
