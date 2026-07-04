@@ -376,7 +376,7 @@ export default function Home() {
                         <span className={styles.productPrice} style={{ color: '#10B981' }}>{formatPrice(product.price)}</span>
                       </div>
                       <button onClick={() => handleAddToCart(product)} className="gradient-button" style={{ padding: '8px 16px', borderRadius: '6px' }} disabled={product.stock <= 0}>
-                        {product.stock <= 0 ? 'Indisponible' : '+ Ajouter'}
+                        {product.stock <= 0 ? 'Indisponible' : '🛒 Au panier'}
                       </button>
                     </div>
                   </div>
