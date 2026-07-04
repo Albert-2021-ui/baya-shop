@@ -30,7 +30,7 @@ export function WishlistProvider({ children }) {
 
   const addToWishlist = (product) => {
     setWishlist((prevWishlist) => {
-      const existingItem = prevWishlist.find((item) => item.id === product.id);
+      const existingItem = prevWishlist.find((item) => String(item.id) === String(product.id));
       if (existingItem) {
         return prevWishlist;
       }
@@ -50,12 +50,12 @@ export function WishlistProvider({ children }) {
 
   const removeFromWishlist = (productId) => {
     setWishlist((prevWishlist) =>
-      prevWishlist.filter((item) => item.id !== productId)
+      prevWishlist.filter((item) => String(item.id) !== String(productId))
     );
   };
 
   const isInWishlist = (productId) => {
-    return wishlist.some((item) => item.id === productId);
+    return wishlist.some((item) => String(item.id) === String(productId));
   };
 
   const toggleWishlist = (product) => {
