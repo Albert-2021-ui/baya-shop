@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../../lib/prisma';
 
 // GET /api/reviews - Récupérer tous les avis (triés du plus récent au plus ancien)
 export async function GET() {
@@ -15,8 +13,6 @@ export async function GET() {
   } catch (error) {
     console.error('Erreur lors de la lecture des avis:', error);
     return NextResponse.json({ error: 'Impossible de charger les avis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -42,9 +38,7 @@ export async function POST(request) {
     
     return NextResponse.json({ success: true, review: newReview });
   } catch (error) {
-    console.error('Erreur lors de l\'ajout de l\'avis:', error);
-    return NextResponse.json({ error: 'Impossible d\'ajouter l\'avis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error("Erreur lors de l'ajout de l'avis:", error);
+    return NextResponse.json({ error: "Impossible d'ajouter l'avis." }, { status: 500 });
   }
 }

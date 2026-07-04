@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../../lib/prisma';
 
 // GET /api/orders - Récupérer toutes les commandes
 export async function GET() {
@@ -41,7 +39,7 @@ export async function GET() {
           method: order.paymentMethod,
           provider: order.paymentMethod === 'direct_transfer' ? 'transfert_direct' : order.paymentMethod,
           details: order.transactionId,
-          phone: order.paymentMethod === 'direct_transfer' ? order.transactionId : null // Approximation
+          phone: order.paymentMethod === 'direct_transfer' ? order.transactionId : null
         },
         items: order.items.map(item => ({
           id: item.productId,
@@ -56,8 +54,6 @@ export async function GET() {
   } catch (error) {
     console.error('Erreur lors de la lecture des commandes:', error);
     return NextResponse.json({ error: 'Impossible de charger les commandes.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -73,7 +69,7 @@ export async function PUT(request) {
       where: { id: parseInt(orderId) },
       data: {
         status: newStatus,
-        paymentStatus: newStatus === 'delivered' ? 'PAID' : undefined // Si livré/validé, c'est payé
+        paymentStatus: newStatus === 'delivered' ? 'PAID' : undefined
       }
     });
     
@@ -81,7 +77,5 @@ export async function PUT(request) {
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la commande:', error);
     return NextResponse.json({ error: 'Impossible de mettre à jour la commande.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# IMPORTANT: .env.local contient les secrets - ne JAMAIS commiter
+# Créez un fichier .env.local MANUELLEMENT sur le serveur ou dans Railway variables
 
 # vercel
 .vercel
@@ -43,3 +45,10 @@ next-env.d.ts
 # local mock data & logs
 /src/data/orders.json
 /src/data/sent_emails.json
+
+# SQLite journal (les fichiers temporaires, mais pas dev.db lui-même)
+prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
+# NOTE: prisma/dev.db est inclus dans git pour que Railway ait une DB initiale
+

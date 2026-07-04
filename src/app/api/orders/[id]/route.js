@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../../../lib/prisma';
 
 // DELETE /api/orders/[id] - Supprimer une commande
 export async function DELETE(request, { params }) {
@@ -16,7 +14,5 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('Erreur lors de la suppression de la commande:', error);
     return NextResponse.json({ error: 'Impossible de supprimer la commande.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

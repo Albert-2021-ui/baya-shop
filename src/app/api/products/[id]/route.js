@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../../../lib/prisma';
 
 // PUT /api/products/[id] - Modifier un produit
 export async function PUT(request, { params }) {
@@ -25,8 +23,6 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error('Erreur lors de la modification du produit:', error);
     return NextResponse.json({ error: 'Impossible de modifier le produit.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -43,7 +39,5 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('Erreur lors de la suppression du produit:', error);
     return NextResponse.json({ error: 'Impossible de supprimer le produit.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

@@ -1,71 +1,114 @@
-# Guide de Déploiement : BAYA SHOP
+# 🚀 Guide de Déploiement : BAYA SHOP sur Railway
 
-Félicitations, l'application BAYA SHOP est prête à être mise en ligne.
-Ce guide vous indique comment héberger votre site sur un serveur (VPS, Hostinger, LWS, etc.) ou via Vercel.
+## Pourquoi Railway ?
 
----
-
-## 1. Prérequis Serveur Classique (Recommandé)
-
-Étant donné que nous utilisons **SQLite** pour stocker les produits, les commandes et les avis, un hébergement sur un **serveur standard (VPS, cPanel Node.js, Hostinger)** est **fortement recommandé**. Cela garantit que la base de données (`dev.db`) ne soit jamais effacée.
-
-### Étapes sur votre VPS / Serveur
-1. **Installez Node.js** (version 18+ recommandée).
-2. **Uploadez vos fichiers** vers le serveur (via FTP ou Git).
-3. **Installez les dépendances** :
-   ```bash
-   npm install
-   ```
-4. **Appliquez la base de données Prisma** :
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-5. **Compilez l'application Next.js** pour la production :
-   ```bash
-   npm run build
-   ```
-6. **Lancez le serveur** (Nous recommandons d'utiliser `pm2` pour que le site reste allumé en permanence) :
-   ```bash
-   npm install -g pm2
-   pm2 start npm --name "bayashop" -- start
-   ```
+Railway est une plateforme cloud fiable qui supporte **SQLite natif** avec filesystem persistant. Contrairement à Vercel, Railway ne remet pas à zéro les fichiers entre les déploiements.
 
 ---
 
-## 2. Déploiement sur Vercel (Alternatif)
+## 1. Préparation : Pousser sur GitHub
 
-> [!WARNING]
-> Vercel est un environnement **Serverless**. À chaque redémarrage, Vercel **efface les fichiers locaux**. Cela signifie que votre base de données SQLite (`dev.db`) sera réinitialisée constamment et vous perdrez vos commandes.
+Votre code doit être sur GitHub. Si ce n'est pas encore fait :
 
-Si vous **devez** déployer sur Vercel, vous devrez remplacer SQLite par une base de données Cloud gratuite (comme **Neon.tech** ou **Supabase**) :
-
-1. Créez un compte gratuit sur Neon ou Supabase et récupérez l'URL de connexion PostgreSQL.
-2. Allez dans le fichier `prisma/schema.prisma` et modifiez le datasource :
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-3. Créez un fichier `.env` contenant votre clé :
-   ```env
-   DATABASE_URL="postgres://votre_utilisateur:motdepasse@serveur.neon.tech/bayashop"
-   ```
-4. Exécutez :
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-5. Sur Vercel, ajoutez votre `DATABASE_URL` dans les variables d'environnement.
-6. Déployez votre projet sur Vercel.
-
----
-
-## 3. Sécurité (Très Important)
-L'espace Administration (`/admin`) nécessite de configurer un mot de passe.
-Allez dans le panneau de contrôle de votre hébergeur (ou dans votre fichier `.env.local` sur le serveur) et définissez :
-```env
-ADMIN_PASSWORD=VOTRE_MOT_DE_PASSE_SECRET
+```bash
+# Dans le dossier baya-shop :
+git add .
+git commit -m "Config Railway - prêt pour déploiement"
+git remote add origin https://github.com/VOTRE_USERNAME/baya-shop.git
+git push -u origin main
 ```
-Si vous ne le définissez pas, le mot de passe par défaut pour accéder à l'admin restera `admin`. Changez-le dès que possible !
+
+---
+
+## 2. Déploiement sur Railway
+
+### Étape 1 - Créer un compte Railway
+1. Allez sur [railway.app](https://railway.app)
+2. Cliquez sur **"Start a New Project"**
+3. Connectez-vous avec votre compte **GitHub**
+
+### Étape 2 - Déployer depuis GitHub
+1. Cliquez sur **"Deploy from GitHub repo"**
+2. Sélectionnez votre dépôt **baya-shop**
+3. Railway détectera automatiquement que c'est un projet Next.js
+
+### Étape 3 - Ajouter les variables d'environnement
+Dans Railway, allez dans **Variables** et ajoutez ces valeurs :
+
+| Variable | Valeur |
+|---|---|
+| `ADMIN_USERNAME` | `albert` |
+| `ADMIN_PASSWORD` | `baya` (changez-le !) |
+| `BANK_ACCOUNT_NAME` | `Albert BAYA` |
+| `BANK_ACCOUNT_NUMBER` | `BJ061120010086600170007` |
+| `BANK_NAME` | `BOA` |
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_SECURE` | `false` |
+| `SMTP_USER` | `eugenebaya6@gmail.com` |
+| `SMTP_PASS` | `lfvb cile ynhq vfln` |
+| `SMTP_FROM` | `BAYA SHOP <eugenebaya6@gmail.com>` |
+| `NODE_ENV` | `production` |
+
+### Étape 4 - Volume persistant (pour SQLite)
+Pour que la base de données SQLite soit **permanente** :
+
+1. Dans Railway, allez dans votre service
+2. Cliquez sur **"Add Volume"**
+3. Configurez le volume avec le chemin de montage : `/app/prisma`
+4. Cliquez sur **"Deploy"**
+
+> [!IMPORTANT]
+> Le Volume persistant est **essentiel** pour garder vos commandes entre les redémarrages. Sans lui, la DB se réinitialise à chaque redéploiement.
+
+### Étape 5 - Déployer
+1. Railway lancera automatiquement le build
+2. Le build exécutera `prisma generate && next build`
+3. Une fois terminé, Railway vous donnera une URL publique
+
+---
+
+## 3. Initialiser la base de données
+
+Après le premier déploiement, connectez-vous à Railway et exécutez :
+
+```bash
+# Dans le terminal Railway (onglet "Deploy" > "View Logs" > "Shell")
+npx prisma db push
+```
+
+Cela créera les tables dans la DB SQLite.
+
+---
+
+## 4. Accès à votre site
+
+- **Site public** : `https://votre-projet.up.railway.app`
+- **Panneau Admin** : `https://votre-projet.up.railway.app/admin`
+  - Identifiant : `albert`
+  - Mot de passe : `baya` (changez-le dans Railway Variables !)
+
+---
+
+## 5. Tarification Railway
+
+- **Plan Hobby** : 5$ / mois (recommandé)
+- **Plan Trial** : Gratuit avec 500 heures/mois
+
+> [!NOTE]
+> Le plan Trial suffit pour tester. Pour un site en production permanent, optez pour le plan Hobby à 5$/mois.
+
+---
+
+## 6. Commandes utiles
+
+```bash
+# Voir les logs en direct
+railway logs
+
+# Ouvrir un shell dans le conteneur
+railway shell
+
+# Re-déployer manuellement
+railway up
+```

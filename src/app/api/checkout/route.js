@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../lib/prisma';
 import { sendConfirmationEmail } from '../../../utils/sendEmail';
-
-const prisma = new PrismaClient();
 
 export async function POST(request) {
   try {
@@ -59,10 +57,8 @@ export async function POST(request) {
       console.error("Erreur lors de la mise à jour des stocks:", err);
     }
 
-    // 3. Envoyer l'e-mail (uniquement si ce n'est pas un transfert manuel, ou si l'utilisateur veut quand même un mail d'attente)
-    // Pour les virements et momo directs, on peut envoyer un email "Commande en attente de validation"
+    // 3. Envoyer l'e-mail de confirmation
     try {
-      // Re-formater l'objet pour qu'il soit compatible avec l'ancienne fonction d'email
       const emailOrderData = {
         ...orderData,
         date: finalOrder.createdAt.toISOString(),
@@ -92,7 +88,5 @@ export async function POST(request) {
       { error: "Erreur lors du traitement de la commande." },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
