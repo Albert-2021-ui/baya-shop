@@ -48,7 +48,7 @@ export default function CartPage() {
           <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '-10px 0 10px 0' }}>
             Explorez notre sélection de produits exclusifs pour commencer vos achats.
           </p>
-          <Link href={'./pages/index'}>
+          <Link href="/">
             <button className={styles.continueShoppingBtn}>Retourner à l'accueil</button>
           </Link>
         </div>

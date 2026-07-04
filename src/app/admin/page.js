@@ -22,10 +22,14 @@ export default function AdminPage() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
+  // Liste de clients calculée
+  const [clients, setClients] = useState([]);
+
   // État de l'inspection de commande (Modal)
   const [inspectingOrder, setInspectingOrder] = useState(null);
 
-  // Formulaire nouveau produit
+  // Formulaire nouveau/édition produit
+  const [editingProduct, setEditingProduct] = useState(null);
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
@@ -35,6 +39,7 @@ export default function AdminPage() {
     stock: '10'
   });
   const [submittingProduct, setSubmittingProduct] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Vérifier la session de connexion globale
   useEffect(() => {
@@ -54,7 +59,38 @@ export default function AdminPage() {
       const res = await fetch('/api/orders');
       if (res.ok) {
         const data = await res.json();
-        setOrders(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+        // Filtrer les commandes malformées avant de les afficher
+        const validOrders = (Array.isArray(data) ? data : [])
+          .filter((o) => o && o.payment && o.customer)
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+        setOrders(validOrders);
+
+        // Agréger les clients
+        const clientsMap = {};
+        validOrders.forEach(o => {
+          const email = o.customer.email;
+          const phone = o.customer.phone;
+          const key = email || phone || 'inconnu';
+          if (!clientsMap[key]) {
+            clientsMap[key] = {
+              firstName: o.customer.firstName,
+              lastName: o.customer.lastName,
+              email: email,
+              phone: phone,
+              address: o.customer.address,
+              city: o.customer.city,
+              orderCount: 0,
+              totalSpent: 0,
+              lastOrderDate: o.date
+            };
+          }
+          clientsMap[key].orderCount += 1;
+          clientsMap[key].totalSpent += o.total;
+          if (new Date(o.date) > new Date(clientsMap[key].lastOrderDate)) {
+            clientsMap[key].lastOrderDate = o.date;
+          }
+        });
+        setClients(Object.values(clientsMap).sort((a, b) => b.totalSpent - a.totalSpent));
       }
     } catch (e) {
       console.error(e);
@@ -143,7 +179,66 @@ export default function AdminPage() {
     }
   };
 
-  // Soumettre un nouveau produit
+  // File Upload
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNewProduct(prev => ({ ...prev, image: data.url }));
+      } else {
+        alert("Erreur lors de l'upload");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur réseau");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Supprimer un produit
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer ce produit ?')) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchProducts();
+      } else {
+        alert('Erreur lors de la suppression.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur réseau.');
+    }
+  };
+
+  // Supprimer une commande
+  const handleDeleteOrder = async (id) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cette commande (Action irréversible) ?')) return;
+    try {
+      const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (inspectingOrder && inspectingOrder.id === id) setInspectingOrder(null);
+        fetchOrders();
+      } else {
+        alert('Erreur lors de la suppression de la commande.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur réseau.');
+    }
+  };
+
+  // Soumettre un nouveau produit ou modifier
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     if (!newProduct.name || !newProduct.price) {
@@ -153,8 +248,11 @@ export default function AdminPage() {
 
     setSubmittingProduct(true);
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const method = editingProduct ? 'PUT' : 'POST';
+      const url = editingProduct ? `/api/products/${editingProduct}` : '/api/products';
+      
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json'
         },
@@ -162,18 +260,14 @@ export default function AdminPage() {
       });
 
       if (res.ok) {
-        alert('Produit ajouté avec succès !');
+        alert(editingProduct ? 'Produit modifié !' : 'Produit ajouté avec succès !');
         setNewProduct({
-          name: '',
-          price: '',
-          description: '',
-          category: 'Électronique',
-          image: '',
-          stock: '10'
+          name: '', price: '', description: '', category: 'Électronique', image: '', stock: '10'
         });
+        setEditingProduct(null);
         fetchProducts();
       } else {
-        alert('Erreur lors de l\'ajout du produit.');
+        alert('Erreur lors de la sauvegarde du produit.');
       }
     } catch (e) {
       console.error(e);
@@ -235,11 +329,14 @@ export default function AdminPage() {
     doc.text('Mode de Paiement :', 110, 63);
     
     doc.setFont('helvetica', 'normal');
-    doc.text(order.payment.reference || 'N/A', 150, 52);
+    const payment = order.payment || {};
+    doc.text(payment.reference || 'N/A', 150, 52);
     doc.text(new Date(order.date).toLocaleDateString('fr-FR'), 150, 58);
     
-    const paymentLabel = order.payment.method === 'momo'
-      ? `Mobile Money (${order.payment.provider.toUpperCase()})`
+    const paymentLabel = payment.method === 'momo'
+      ? `Mobile Money (${(payment.provider || '').toUpperCase()})`
+      : payment.method === 'direct_transfer'
+      ? 'Transfert Mobile Money Direct'
       : 'Carte Bancaire';
     doc.text(paymentLabel, 150, 63);
 
@@ -249,10 +346,11 @@ export default function AdminPage() {
     doc.setFont('helvetica', 'bold');
     doc.text('Facturé à :', 20, 85);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${order.customer.firstName} ${order.customer.lastName}`, 20, 91);
-    doc.text(order.customer.email, 20, 96);
-    doc.text(order.customer.phone, 20, 101);
-    doc.text(`${order.customer.address}, ${order.customer.city}`, 20, 106);
+    const customer = order.customer || {};
+    doc.text(`${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'N/A', 20, 91);
+    doc.text(customer.email || 'N/A', 20, 96);
+    doc.text(customer.phone || 'N/A', 20, 101);
+    doc.text(`${customer.address || ''}, ${customer.city || ''}`.replace(/^, |, $/, '') || 'N/A', 20, 106);
 
     // Tampon vert PAYÉ
     doc.setDrawColor(16, 185, 129);
@@ -277,7 +375,7 @@ export default function AdminPage() {
     let yOffset = 129;
     doc.setFont('helvetica', 'normal');
     
-    order.items.forEach((item) => {
+    (order.items || []).forEach((item) => {
       const itemName = item.name.length > 40 ? item.name.slice(0, 38) + '...' : item.name;
       doc.text(itemName, 22, yOffset);
       doc.text(item.quantity.toString(), 122, yOffset);
@@ -311,28 +409,27 @@ export default function AdminPage() {
     doc.text('Merci de votre confiance pour votre achat chez BAYA SHOP.', 105, 275, null, null, 'center');
     doc.text('Ceci est une facture acquittée électroniquement.', 105, 280, null, null, 'center');
 
-    const pdfArrayBuffer = doc.output("arraybuffer");
+    // Envoi de l'e-mail de confirmation avec quittance via l'API
+    try {
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ order })
+      });
+      
+      if (response.ok) {
+        alert("E-mail de quittance envoyé avec succès !");
+      } else {
+        alert("Erreur lors de l'envoi de l'e-mail de quittance.");
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'envoi de l'e-mail:", err);
+      alert("Erreur réseau lors de l'envoi de l'e-mail.");
+    }
 
-    const uint8Array = new Uint8Array(pdfArrayBuffer);
-
-    let binary = "";
-    uint8Array.forEach(byte => {
-    binary += String.fromCharCode(byte);
-    });
-
-    const pdfBase64 = btoa(binary);
-
-  await fetch("/api/send-order-email", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    order,
-    pdf: pdfBase64
-  })
-});
-doc.save(`Facture_${order.payment.reference}.pdf`);
+    doc.save(`Facture_${order.payment?.reference || 'commande'}.pdf`);
   };
 
   // Calculs statistiques
@@ -446,7 +543,7 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
         <div className={styles.modalOverlay}>
           <div className={`${styles.modalContent} glass-card`}>
             <div className={styles.modalHeader}>
-              <h2 style={{ color: 'var(--text-primary)' }}>Commande {inspectingOrder.payment.reference}</h2>
+              <h2 style={{ color: 'var(--text-primary)' }}>Commande {inspectingOrder.payment?.reference || 'N/A'}</h2>
               <button onClick={() => setInspectingOrder(null)} className={styles.modalCloseBtn}>
                 &times;
               </button>
@@ -484,16 +581,16 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
               <div className={styles.modalSection}>
                 <h4 className={styles.modalSectionTitle}>Informations Client</h4>
                 <p style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  {inspectingOrder.customer.firstName} {inspectingOrder.customer.lastName}
+                  {inspectingOrder.customer?.firstName} {inspectingOrder.customer?.lastName}
                 </p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  ✉️ {inspectingOrder.customer.email}
+                  ✉️ {inspectingOrder.customer?.email || 'N/A'}
                 </p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  📞 {inspectingOrder.customer.phone}
+                  📞 {inspectingOrder.customer?.phone || 'N/A'}
                 </p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  📍 {inspectingOrder.customer.address}, {inspectingOrder.customer.city}
+                  📍 {inspectingOrder.customer?.address}, {inspectingOrder.customer?.city}
                 </p>
               </div>
 
@@ -505,23 +602,23 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                 </p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Méthode: <b style={{ textTransform: 'uppercase', color: 'var(--text-primary)' }}>
-                    {inspectingOrder.payment.method === 'momo'
-                      ? `Mobile Money (${inspectingOrder.payment.provider})`
-                      : inspectingOrder.payment.method === 'direct_transfer'
-                      ? `Transfert Direct MM (${inspectingOrder.payment.provider.replace('transfert_direct_', '')})`
-                      : inspectingOrder.payment.method === 'bank_transfer'
+                    {inspectingOrder.payment?.method === 'momo'
+                      ? `Mobile Money (${inspectingOrder.payment?.provider || ''})`
+                      : inspectingOrder.payment?.method === 'direct_transfer'
+                      ? `Transfert Direct MM (${(inspectingOrder.payment?.provider || '').replace('transfert_direct_', '')})`
+                      : inspectingOrder.payment?.method === 'bank_transfer'
                       ? 'Virement Bancaire Manuel'
-                      : inspectingOrder.payment.method === 'external_gateway'
-                      ? `Passerelle (${inspectingOrder.payment.provider})`
+                      : inspectingOrder.payment?.method === 'external_gateway'
+                      ? `Passerelle (${inspectingOrder.payment?.provider || ''})`
                       : 'Carte Bancaire'}
                   </b>
                 </p>
-                {inspectingOrder.payment.phone && (
+                {inspectingOrder.payment?.phone && (
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                     Tél Payeur: <b>{inspectingOrder.payment.phone}</b>
                   </p>
                 )}
-                {inspectingOrder.payment.details && (
+                {inspectingOrder.payment?.details && (
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                     Infos de transaction: <b>{inspectingOrder.payment.details}</b>
                   </p>
@@ -550,7 +647,7 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
             {/* Liste des articles commandés */}
             <div className={styles.modalSection} style={{ marginBottom: '20px' }}>
               <h4 className={styles.modalSectionTitle}>Articles Achetés</h4>
-              {inspectingOrder.items.map((item) => (
+              {(inspectingOrder.items || []).map((item) => (
                 <div key={item.id} className={styles.orderItemRow}>
                   <span style={{ color: 'var(--text-primary)' }}>{item.name} <b>x{item.quantity}</b></span>
                   <span style={{ fontWeight: '600' }}>{formatPrice(item.price * item.quantity)}</span>
@@ -564,12 +661,19 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
             </div>
 
             {/* Actions modal */}
-            <div className={styles.inspectActions}>
+            <div className={styles.inspectActions} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => generatePDFForOrder(inspectingOrder)}
                 className={`${styles.inspectBtn} gradient-button`}
               >
                 📥 Télécharger Reçu PDF
+              </button>
+              <button
+                onClick={() => handleDeleteOrder(inspectingOrder.id)}
+                className={`${styles.inspectBtn}`}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+              >
+                🗑️ Supprimer Commande
               </button>
               <button
                 onClick={() => setInspectingOrder(null)}
@@ -613,6 +717,12 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
             className={`${styles.tabBtn} ${activeTab === 'orders' ? styles.tabBtnActive : ''}`}
           >
             📦 Commandes ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('clients')}
+            className={`${styles.tabBtn} ${activeTab === 'clients' ? styles.tabBtnActive : ''}`}
+          >
+            👥 Clients ({clients.length})
           </button>
           <button
             onClick={() => setActiveTab('products')}
@@ -732,21 +842,21 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                             onClick={() => setInspectingOrder(order)}
                             style={{ cursor: 'pointer' }}
                           >
-                            <td className={styles.td}>{order.payment.reference}</td>
-                            <td className={styles.td}>{order.customer.firstName} {order.customer.lastName}</td>
-                            <td className={styles.td}>{new Date(order.date).toLocaleDateString('fr-FR')}</td>
+                            <td className={styles.td}>{order.payment?.reference || 'N/A'}</td>
+                            <td className={styles.td}>{order.customer?.firstName} {order.customer?.lastName}</td>
+                            <td className={styles.td}>{order.date ? new Date(order.date).toLocaleDateString('fr-FR') : 'N/A'}</td>
                             <td className={styles.td} style={{ textTransform: 'uppercase', fontSize: '0.8rem' }}>
-                              {order.payment.method === 'momo'
-                                ? `MOMO (${order.payment.provider})`
-                                : order.payment.method === 'direct_transfer'
-                                ? `MM Direct (${order.payment.provider.replace('transfert_direct_', '')})`
-                                : order.payment.method === 'bank_transfer'
+                              {order.payment?.method === 'momo'
+                                ? `MOMO (${order.payment?.provider || ''})`
+                                : order.payment?.method === 'direct_transfer'
+                                ? `MM Direct (${(order.payment?.provider || '').replace('transfert_direct_', '')})`
+                                : order.payment?.method === 'bank_transfer'
                                 ? 'Virement Bancaire'
-                                : order.payment.method === 'external_gateway'
-                                ? `Gateway (${order.payment.provider})`
+                                : order.payment?.method === 'external_gateway'
+                                ? `Gateway (${order.payment?.provider || ''})`
                                 : 'CARTE'}
                             </td>
-                            <td className={styles.td} style={{ fontWeight: 'bold' }}>{formatPrice(order.total)}</td>
+                            <td className={styles.td} style={{ fontWeight: 'bold' }}>{formatPrice(order.total || 0)}</td>
                             <td className={styles.td}>
                               <span className={`${styles.statusBadge} ${
                                 order.status === 'delivered' ? styles.statusDelivered :
@@ -804,24 +914,24 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                           onClick={() => setInspectingOrder(order)}
                           style={{ cursor: 'pointer' }}
                         >
-                          <td className={styles.td} style={{ fontWeight: 'bold' }}>{order.payment.reference}</td>
+                          <td className={styles.td} style={{ fontWeight: 'bold' }}>{order.payment?.reference || 'N/A'}</td>
                           <td className={styles.td}>
-                            <div>{order.customer.firstName} {order.customer.lastName}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{order.customer.email} | {order.customer.phone}</div>
+                            <div>{order.customer?.firstName} {order.customer?.lastName}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{order.customer?.email || 'N/A'} | {order.customer?.phone || 'N/A'}</div>
                           </td>
-                          <td className={styles.td}>{new Date(order.date).toLocaleString('fr-FR')}</td>
+                          <td className={styles.td}>{order.date ? new Date(order.date).toLocaleString('fr-FR') : 'N/A'}</td>
                           <td className={styles.td} style={{ textTransform: 'uppercase', fontSize: '0.8rem' }}>
-                            {order.payment.method === 'momo'
-                              ? `MOMO (${order.payment.provider})`
-                              : order.payment.method === 'direct_transfer'
-                              ? `MM Direct (${order.payment.provider.replace('transfert_direct_', '')})`
-                              : order.payment.method === 'bank_transfer'
+                            {order.payment?.method === 'momo'
+                              ? `MOMO (${order.payment?.provider || ''})`
+                              : order.payment?.method === 'direct_transfer'
+                              ? `MM Direct (${(order.payment?.provider || '').replace('transfert_direct_', '')})`
+                              : order.payment?.method === 'bank_transfer'
                               ? 'Virement Bancaire'
-                              : order.payment.method === 'external_gateway'
-                              ? `Gateway (${order.payment.provider})`
+                              : order.payment?.method === 'external_gateway'
+                              ? `Gateway (${order.payment?.provider || ''})`
                               : 'CARTE'}
                           </td>
-                          <td className={styles.td} style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
+                          <td className={styles.td} style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{formatPrice(order.total || 0)}</td>
                           <td className={styles.td}>
                             <span className={`${styles.statusBadge} ${
                               order.status === 'delivered' ? styles.statusDelivered :
@@ -835,6 +945,44 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                                order.status === 'pending_verification' ? 'À Vérifier ⚠️' : 'En attente'}
                             </span>
                           </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: CLIENTS */}
+          {activeTab === 'clients' && (
+            <div className="glass-card animate-fade" style={{ padding: '24px' }}>
+              <h3 className={styles.cardTitle}>Base de Données Clients</h3>
+              {clients.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>Aucun client enregistré.</p>
+              ) : (
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th className={styles.th}>Nom du Client</th>
+                        <th className={styles.th}>Contact</th>
+                        <th className={styles.th}>Adresse</th>
+                        <th className={styles.th}>Commandes</th>
+                        <th className={styles.th}>Total Dépensé</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clients.map((client, idx) => (
+                        <tr key={idx} className={styles.tr}>
+                          <td className={styles.td} style={{ fontWeight: 'bold' }}>{client.firstName} {client.lastName}</td>
+                          <td className={styles.td}>
+                            <div>{client.email || 'N/A'}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{client.phone || 'N/A'}</div>
+                          </td>
+                          <td className={styles.td}>{client.address || 'N/A'}, {client.city || 'N/A'}</td>
+                          <td className={styles.td} style={{ textAlign: 'center' }}>{client.orderCount}</td>
+                          <td className={styles.td} style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{formatPrice(client.totalSpent)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -862,6 +1010,7 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                           <th className={styles.th}>Catégorie</th>
                           <th className={styles.th}>Prix</th>
                           <th className={styles.th}>Stock</th>
+                          <th className={styles.th}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -881,6 +1030,32 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                                 {product.stock} u.
                               </span>
                             </td>
+                            <td className={styles.td}>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  onClick={() => {
+                                    setEditingProduct(product.id);
+                                    setNewProduct({
+                                      name: product.name,
+                                      price: product.price,
+                                      description: product.description,
+                                      category: product.category,
+                                      image: product.image,
+                                      stock: product.stock
+                                    });
+                                  }}
+                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteProduct(product.id)}
+                                  style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -891,7 +1066,17 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
 
               {/* Formulaire d'ajout de droite avec aperçu d'image en direct */}
               <div className={`${styles.formCard} glass-card`}>
-                <h3 className={styles.cardTitle}>Ajouter un Produit</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 className={styles.cardTitle} style={{ margin: 0 }}>{editingProduct ? 'Modifier le Produit' : 'Ajouter un Produit'}</h3>
+                  {editingProduct && (
+                    <button type="button" onClick={() => {
+                      setEditingProduct(null);
+                      setNewProduct({ name: '', price: '', description: '', category: 'Électronique', image: '', stock: '10' });
+                    }} style={{ background: 'none', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                      Annuler
+                    </button>
+                  )}
+                </div>
                 <form onSubmit={handleProductSubmit} className={styles.formGrid}>
                   <div className="input-group">
                     <label className="input-label">Nom du produit *</label>
@@ -932,14 +1117,27 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
                   </div>
 
                   <div className="input-group">
-                    <label className="input-label">URL de l'image (optionnel)</label>
-                    <input
-                      type="text"
-                      placeholder="https://images.unsplash.com/..."
-                      value={newProduct.image}
-                      onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-                      className="input-field"
-                    />
+                    <label className="input-label">Image (Upload ou URL)</label>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        style={{ display: 'none' }}
+                        id="file-upload"
+                      />
+                      <label htmlFor="file-upload" className="gradient-button" style={{ padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', textAlign: 'center', flex: 1 }}>
+                        {uploadingImage ? 'Upload...' : '📷 Parcourir...'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ou coller une URL..."
+                        value={newProduct.image}
+                        onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                        className="input-field"
+                        style={{ flex: 2 }}
+                      />
+                    </div>
                   </div>
 
                   {/* Aperçu en direct de l'image du produit */}
@@ -985,11 +1183,11 @@ doc.save(`Facture_${order.payment.reference}.pdf`);
 
                   <button
                     type="submit"
-                    disabled={submittingProduct}
+                    disabled={submittingProduct || uploadingImage}
                     className="gradient-button styles.submitBtn"
                     style={{ padding: '12px', borderRadius: '8px', fontWeight: 'bold' }}
                   >
-                    {submittingProduct ? 'Ajout...' : 'Ajouter le Produit'}
+                    {submittingProduct ? 'Sauvegarde...' : (editingProduct ? 'Enregistrer les Modifs' : 'Ajouter le Produit')}
                   </button>
                 </form>
               </div>

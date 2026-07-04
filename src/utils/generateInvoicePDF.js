@@ -1,6 +1,28 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 /**
+ * Nettoie une chaîne de caractères pour qu'elle soit compatible avec l'encodage WinAnsi (Windows-1252)
+ * utilisé par les polices standard de pdf-lib.
+ * @param {string} str - La chaîne à nettoyer
+ * @returns {string} - La chaîne nettoyée
+ */
+function cleanStringForWinAnsi(str) {
+  if (!str) return '';
+  // Remplacer les différents types d'espaces insécables par des espaces simples
+  let s = String(str).replace(/[\u202F\u00A0\u2007\u200b]/g, ' ');
+  // Apostrophes et guillemets typographiques
+  s = s.replace(/[\u2018\u2019\u02BC]/g, "'");
+  s = s.replace(/[\u201C\u201D]/g, '"');
+  s = s.replace(/[\u2013\u2014]/g, '-');
+
+  // Expression régulière excluant tous les caractères non-WinAnsi
+  const winAnsiAllowed = /[^\x20-\x7E\xA0-\xFF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178]/g;
+
+  return s.replace(winAnsiAllowed, '?');
+}
+
+
+/**
  * Génère un PDF de facture/quittance pour une commande donnée.
  * Utilise pdf-lib (côté serveur, pas de DOM nécessaire).
  * @param {Object} order - L'objet commande complet
@@ -29,12 +51,13 @@ export async function generateInvoicePDF(order) {
 
   // Formateur de prix
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
+    const formatted = new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'XOF',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price).replace('XOF', 'FCFA');
+    return cleanStringForWinAnsi(formatted);
   };
 
   // ============================================================
@@ -98,11 +121,11 @@ export async function generateInvoicePDF(order) {
   // Infos commande (droite)
   const rightCol = width - margin - 200;
   page.drawText('Facture N° :', { x: rightCol, y: yPos, size: 10, font: helveticaBold, color: gray });
-  page.drawText(order?.payment?.reference || 'N/A', { x: rightCol + 110, y: yPos, size: 10, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(order?.payment?.reference || 'N/A'), { x: rightCol + 110, y: yPos, size: 10, font: helvetica, color: gray });
 
   page.drawText('Date :', { x: rightCol, y: yPos - 16, size: 10, font: helveticaBold, color: gray });
   const dateStr = order?.date ? new Date(order.date).toLocaleDateString('fr-FR') : 'N/A';
-  page.drawText(dateStr, { x: rightCol + 110, y: yPos - 16, size: 10, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(dateStr), { x: rightCol + 110, y: yPos - 16, size: 10, font: helvetica, color: gray });
 
   page.drawText('Mode de Paiement :', { x: rightCol, y: yPos - 32, size: 10, font: helveticaBold, color: gray });
   let paymentLabel = 'Carte Bancaire';
@@ -115,7 +138,7 @@ export async function generateInvoicePDF(order) {
   } else if (order?.payment?.method === 'external_gateway') {
     paymentLabel = `Passerelle (${order?.payment?.provider || ''})`;
   }
-  page.drawText(paymentLabel, { x: rightCol + 110, y: yPos - 32, size: 9, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(paymentLabel), { x: rightCol + 110, y: yPos - 32, size: 9, font: helvetica, color: gray });
 
   // Séparateur
   yPos -= 65;
@@ -132,19 +155,19 @@ export async function generateInvoicePDF(order) {
   yPos -= 25;
   page.drawText('Facturé à :', { x: margin, y: yPos, size: 10, font: helveticaBold, color: gray });
   yPos -= 16;
-  page.drawText(`${order?.customer?.firstName || ''} ${order?.customer?.lastName || ''}`, { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(`${order?.customer?.firstName || ''} ${order?.customer?.lastName || ''}`), { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
   yPos -= 14;
-  page.drawText(order?.customer?.email || '', { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(order?.customer?.email || ''), { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
   yPos -= 14;
-  page.drawText(order?.customer?.phone || '', { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(order?.customer?.phone || ''), { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
   yPos -= 14;
-  page.drawText(`${order?.customer?.address || ''}, ${order?.customer?.city || ''}`, { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
+  page.drawText(cleanStringForWinAnsi(`${order?.customer?.address || ''}, ${order?.customer?.city || ''}`), { x: margin, y: yPos, size: 10, font: helvetica, color: gray });
 
   // Tampon PAYÉ / EN ATTENTE (à droite)
   const isPending = order?.status === 'pending_verification';
   const stampText = isPending ? 'EN ATTENTE' : 'PAYÉ';
   const stampColor = isPending ? orange : green;
-  const stampWidth = helveticaBold.widthOfTextAtSize(stampText, 14);
+  const stampWidth = helveticaBold.widthOfTextAtSize(cleanStringForWinAnsi(stampText), 14);
   const stampX = width - margin - stampWidth - 24;
   const stampY = yPos + 30;
 
@@ -157,7 +180,7 @@ export async function generateInvoicePDF(order) {
     borderWidth: 1.5,
     color: rgb(1, 1, 1),
   });
-  page.drawText(stampText, {
+  page.drawText(cleanStringForWinAnsi(stampText), {
     x: stampX + 12,
     y: stampY + 2,
     size: 14,
@@ -194,8 +217,9 @@ export async function generateInvoicePDF(order) {
   // Lignes d'articles
   const items = order?.items || [];
   for (const item of items) {
-    const itemName = item.name && item.name.length > 45 ? item.name.slice(0, 43) + '...' : (item.name || '');
-    page.drawText(itemName, { x: col1, y: yPos, size: 9, font: helvetica, color: gray });
+    const rawName = item.name || '';
+    const itemName = rawName.length > 45 ? rawName.slice(0, 43) + '...' : rawName;
+    page.drawText(cleanStringForWinAnsi(itemName), { x: col1, y: yPos, size: 9, font: helvetica, color: gray });
     page.drawText(String(item.quantity || 0), { x: col2 + 5, y: yPos, size: 9, font: helvetica, color: gray });
     page.drawText(formatPrice(item.price || 0), { x: col3, y: yPos, size: 9, font: helvetica, color: gray });
     page.drawText(formatPrice((item.price || 0) * (item.quantity || 0)), { x: col4, y: yPos, size: 9, font: helvetica, color: gray });

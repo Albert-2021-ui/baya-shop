@@ -1,83 +1,73 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { PrismaClient } from '@prisma/client';
 import { sendConfirmationEmail } from '../../../utils/sendEmail';
 
-const ordersFilePath = path.join(process.cwd(), 'src', 'data', 'orders.json');
-const productsFilePath = path.join(process.cwd(), 'src', 'data', 'products.json');
-
+const prisma = new PrismaClient();
 
 export async function POST(request) {
   try {
     const { orderData } = await request.json();
 
-    // 1. Lire et enregistrer la commande dans orders.json
-    let orders = [];
-
-    try {
-      const ordersData = await fs.readFile(ordersFilePath, "utf8");
-      orders = JSON.parse(ordersData);
-    } catch (e) {
-      await fs.writeFile(
-        ordersFilePath,
-        JSON.stringify([], null, 2),
-        "utf8"
-      );
+    // 1. Sauvegarder la commande avec Prisma
+    // Déterminer le statut de paiement
+    let paymentStatus = 'PENDING';
+    if (orderData.payment.method === 'direct_transfer' || orderData.payment.method === 'bank_transfer') {
+      paymentStatus = 'PENDING'; // Attente de vérification manuelle
     }
 
-    // 2. Créer la commande finale
-    const nextOrderId =
-      orders.length > 0
-        ? Math.max(...orders.map((o) => o.id || 0)) + 1
-        : 1;
-   
-    const finalOrder = {
-      id: nextOrderId,
-      status: "pending",
-      ...orderData,
-      date: new Date().toISOString(),
-    };
-
-    orders.push(finalOrder);
-
-    await fs.writeFile(
-      ordersFilePath,
-      JSON.stringify(orders, null, 2),
-      "utf8"
-    );
-
-    // 3. Déduire le stock des produits
-    try {
-      const productsData = await fs.readFile(productsFilePath, "utf8");
-      const products = JSON.parse(productsData);
-
-      const items = finalOrder?.items || [];
-
-      for (const item of items) {
-        const productIndex = products.findIndex(
-          (p) => p.id === item.id
-        );
-
-        if (productIndex !== -1) {
-          products[productIndex].stock = Math.max(
-            0,
-            products[productIndex].stock - item.quantity
-          );
+    const finalOrder = await prisma.order.create({
+      data: {
+        reference: orderData.payment.reference,
+        customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
+        customerEmail: orderData.customer.email,
+        customerPhone: orderData.customer.phone,
+        customerAddress: orderData.customer.address,
+        customerCity: orderData.customer.city,
+        total: parseFloat(orderData.total),
+        paymentMethod: orderData.payment.method,
+        paymentStatus: paymentStatus,
+        transactionId: orderData.payment.details || null,
+        status: orderData.status || 'PROCESSING',
+        items: {
+          create: orderData.items.map(item => ({
+            productId: item.id,
+            name: item.name,
+            price: parseFloat(item.price),
+            quantity: parseInt(item.quantity)
+          }))
         }
+      },
+      include: {
+        items: true
       }
+    });
 
-      await fs.writeFile(
-        productsFilePath,
-        JSON.stringify(products, null, 2),
-        "utf8"
-      );
+    // 2. Déduire le stock des produits
+    try {
+      const items = orderData.items || [];
+      for (const item of items) {
+        await prisma.product.update({
+          where: { id: item.id },
+          data: {
+            stock: {
+              decrement: parseInt(item.quantity)
+            }
+          }
+        });
+      }
     } catch (err) {
       console.error("Erreur lors de la mise à jour des stocks:", err);
     }
 
-    // 4. Envoyer l'e-mail
+    // 3. Envoyer l'e-mail (uniquement si ce n'est pas un transfert manuel, ou si l'utilisateur veut quand même un mail d'attente)
+    // Pour les virements et momo directs, on peut envoyer un email "Commande en attente de validation"
     try {
-      await sendConfirmationEmail(finalOrder);
+      // Re-formater l'objet pour qu'il soit compatible avec l'ancienne fonction d'email
+      const emailOrderData = {
+        ...orderData,
+        date: finalOrder.createdAt.toISOString(),
+      };
+      await sendConfirmationEmail(emailOrderData);
     } catch (emailErr) {
       console.error(
         "Erreur lors de la tentative d'envoi d'email:",
@@ -85,9 +75,14 @@ export async function POST(request) {
       );
     }
 
+    // Formater la réponse pour correspondre à l'attente du front-end
     return NextResponse.json({
       success: true,
-      order: finalOrder,
+      order: {
+        ...orderData,
+        id: finalOrder.id,
+        date: finalOrder.createdAt.toISOString()
+      },
     });
 
   } catch (error) {
@@ -97,6 +92,7 @@ export async function POST(request) {
       { error: "Erreur lors du traitement de la commande." },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
-

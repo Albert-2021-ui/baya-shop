@@ -3,13 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { jsPDF } from 'jspdf';
+import { useCart } from '../../context/CartContext';
 import styles from './page.module.css';
 
 export default function SuccessPage() {
+  const { clearCart } = useCart();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Vider le panier automatiquement après un paiement réussi
+    clearCart();
+
     try {
       const savedOrder = localStorage.getItem('last_completed_order');
       if (savedOrder) {
@@ -20,6 +25,7 @@ export default function SuccessPage() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatPrice = (price) => {

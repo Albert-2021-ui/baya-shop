@@ -139,7 +139,20 @@ export async function sendConfirmationEmail(order) {
       </html>
     `;
 
-    // 2. Tenter d'envoyer l'e-mail avec Nodemailer (si variables d'environnement définies)
+    // 2. Générer le PDF de la quittance côté serveur
+    let pdfBuffer = null;
+    let pdfError = null;
+    try {
+      pdfBuffer = await generateInvoicePDF(order);
+      if (pdfBuffer) {
+        console.log(`PDF de quittance généré (${pdfBuffer.length} octets)`);
+      }
+    } catch (pdfErr) {
+      pdfError = pdfErr.message || String(pdfErr);
+      console.error('Erreur lors de la génération du PDF de quittance:', pdfErr);
+    }
+
+    // 3. Tenter d'envoyer l'e-mail avec Nodemailer (si variables d'environnement définies)
     const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
     
     let sentInfo = null;
@@ -157,18 +170,13 @@ export async function sendConfirmationEmail(order) {
           }
         });
 
-        // Générer le PDF de la quittance côté serveur
-        let pdfBuffer = null;
-        try {
-          pdfBuffer = await generateInvoicePDF(order);
-          console.log(`PDF de quittance généré (${pdfBuffer.length} octets)`);
-        } catch (pdfErr) {
-          console.error('Erreur lors de la génération du PDF de quittance:', pdfErr);
-        }
-
         console.log(`Envoi de l'email de confirmation à ${customerEmail}...`);
+        let fromHeader = process.env.SMTP_FROM || process.env.SMTP_USER || '"BAYA SHOP" <eugenebaya6@gmail.com>';
+        // Nettoyer les backslashes d'échappement potentiels si l'env les a inclus littéralement
+        fromHeader = fromHeader.replace(/\\"/g, '"');
+
         const mailOptions = {
-          from:process.env.SMTP_USER || '"BAYA SHOP" <eugenebaya6@gmail.com>',
+          from: fromHeader,
           to: customerEmail,
           subject: emailSubject,
           html: emailHtml,
@@ -194,7 +202,7 @@ export async function sendConfirmationEmail(order) {
       }
     }
 
-    // 3. Fallback : Enregistrer le mail généré en local dans sent_emails.json
+    // 4. Fallback : Enregistrer le mail généré en local dans sent_emails.json
     let loggedEmails = [];
     try {
       const existingData = await fs.readFile(emailsFilePath, 'utf8');
@@ -214,6 +222,9 @@ export async function sendConfirmationEmail(order) {
       date: new Date().toISOString(),
       status: emailStatus,
       smtpInfo: sentInfo,
+      pdfAttached: !!pdfBuffer,
+      pdfSize: pdfBuffer ? pdfBuffer.length : 0,
+      pdfError: pdfError,
       htmlBody: emailHtml
     };
 
@@ -233,5 +244,89 @@ export async function sendConfirmationEmail(order) {
       success: false,
       error: error.message
     };
+  }
+}
+
+export async function sendContactEmail(formData) {
+  try {
+    const { name, email, phone, subject, message } = formData;
+    const emailSubject = `Nouveau message de contact : ${subject}`;
+    
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+      </head>
+      <body style="font-family: Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <h2 style="color: #080b1a; border-bottom: 2px solid #ff7a00; padding-bottom: 10px;">Nouveau Message de Contact</h2>
+          <p><strong>Nom :</strong> ${name}</p>
+          <p><strong>Email :</strong> ${email}</p>
+          <p><strong>Téléphone :</strong> ${phone || 'Non renseigné'}</p>
+          <p><strong>Sujet :</strong> ${subject}</p>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;">
+            <p style="white-space: pre-wrap; margin: 0;">${message}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+    let emailStatus = 'logged_locally';
+
+    if (hasSmtpConfig) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: parseInt(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+
+        let fromHeader = process.env.SMTP_FROM || process.env.SMTP_USER || '"BAYA SHOP" <eugenebaya6@gmail.com>';
+        fromHeader = fromHeader.replace(/\\"/g, '"');
+
+        await transporter.sendMail({
+          from: fromHeader,
+          to: 'eugenebaya6@gmail.com', // Destination fixe
+          replyTo: email, // L'adresse du client
+          subject: emailSubject,
+          html: emailHtml,
+        });
+        
+        emailStatus = 'sent_via_smtp';
+        console.log(`E-mail de contact envoyé via SMTP à eugenebaya6@gmail.com`);
+      } catch (smtpError) {
+        console.error('Échec de l\'envoi via SMTP, enregistrement en local...', smtpError);
+      }
+    }
+
+    // Logging local
+    let loggedEmails = [];
+    try {
+      const existingData = await fs.readFile(emailsFilePath, 'utf8');
+      loggedEmails = JSON.parse(existingData);
+    } catch (e) {
+      try { await fs.mkdir(path.dirname(emailsFilePath), { recursive: true }); } catch(_) {}
+      await fs.writeFile(emailsFilePath, JSON.stringify([], null, 2), 'utf8');
+    }
+
+    loggedEmails.push({
+      id: loggedEmails.length + 1,
+      to: 'eugenebaya6@gmail.com',
+      subject: emailSubject,
+      date: new Date().toISOString(),
+      status: emailStatus,
+      htmlBody: emailHtml,
+      type: 'contact_form'
+    });
+    await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
+
+    return { success: true, status: emailStatus };
+  } catch (error) {
+    console.error('Erreur sendContactEmail:', error);
+    return { success: false, error: error.message };
   }
 }

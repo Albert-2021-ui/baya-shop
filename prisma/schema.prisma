@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  category    String
+  image       String
+  rating      Float    @default(5.0)
+  stock       Int      @default(10)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  reference       String      @unique
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  customerAddress String?
+  customerCity    String?
+  total           Float
+  paymentMethod   String      // "mobile_money", "virement", "fedapay", "cinetpay"
+  paymentStatus   String      @default("PENDING") // "PENDING", "PAID", "FAILED"
+  transactionId   String?     // External ID or Mobile Money number provided by user
+  status          String      @default("PROCESSING") // "PROCESSING", "SHIPPED", "DELIVERED"
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  name      String
+  price     Float
+  quantity  Int
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  authorName  String
+  rating      Int      @default(5)
+  comment     String
+  createdAt   DateTime @default(now())
+}
