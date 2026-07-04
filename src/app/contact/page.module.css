@@ -76,18 +76,19 @@
 
 /* Form Card */
 .formCard, .infoCard {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .formCard:hover, .infoCard:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 .cardTitle {
@@ -127,11 +128,11 @@
 .formGroup textarea {
   padding: 14px 18px;
   border-radius: 12px;
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
-  background: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   font-family: inherit;
   font-size: 1rem;
-  color: #0f172a; /* Dark text for light background */
+  color: #F8FAFC;
   transition: all 0.3s ease;
 }
 
@@ -140,8 +141,8 @@
 .formGroup textarea:focus {
   outline: none;
   border-color: #10b981;
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
 }
 
 .formGroup textarea {

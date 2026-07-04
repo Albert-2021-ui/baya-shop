@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useApp } from '../context/AppContext';
+import { useWishlist } from '../context/WishlistContext';
 import { motion } from 'framer-motion';
 import styles from './page.module.css';
 
 export default function Home() {
   const { addToCart } = useCart();
   const { openSidebar } = useApp();
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -348,8 +350,15 @@ export default function Home() {
                       <button className={styles.quickBtn} onClick={() => handleAddToCart(product)} title="Ajouter au panier">
                         🛒
                       </button>
-                      <button className={styles.quickBtn} onClick={() => triggerNotification('Ajouté aux favoris !')} title="Mettre en favori">
-                        ❤️
+                      <button 
+                        className={styles.quickBtn} 
+                        onClick={() => {
+                          toggleWishlist(product);
+                          triggerNotification(isInWishlist(product.id) ? 'Retiré des favoris' : 'Ajouté aux favoris !');
+                        }} 
+                        title="Mettre en favori"
+                      >
+                        {isInWishlist(product.id) ? '❤️' : '🤍'}
                       </button>
                     </div>
                   </div>
