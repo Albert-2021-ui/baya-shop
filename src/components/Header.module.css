@@ -13,6 +13,7 @@
   height: 80px;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .scrolled {
@@ -45,6 +46,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
 /* ── LOGO ────────────────────────────────────────────────────── */
@@ -54,6 +56,7 @@
   gap: 12px;
   text-decoration: none;
   z-index: 1001; /* Above mobile menu */
+  flex-shrink: 0;
 }
 
 .logoIcon {
@@ -68,6 +71,7 @@
   justify-content: center;
   border-radius: 10px;
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  flex-shrink: 0;
 }
 
 .logoWord {
@@ -75,6 +79,7 @@
   font-weight: 800;
   color: #F8FAFC;
   letter-spacing: -0.5px;
+  white-space: nowrap;
 }
 
 .logoAccent {
@@ -99,6 +104,7 @@
   text-decoration: none;
   border-radius: 8px;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .navLink:hover {
@@ -129,6 +135,8 @@
   border: none;
   transition: all 0.2s ease;
   position: relative;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── FAVORIS (Outline Emerald) ───────────────────────────────── */
@@ -224,6 +232,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 /* ── LANG SWITCHER ───────────────────────────────────────────── */
@@ -243,6 +252,7 @@
   font-weight: 600;
   font-size: 0.85rem;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 .langBtn:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -315,6 +325,7 @@
   cursor: pointer;
   padding: 4px;
   z-index: 1001;
+  flex-shrink: 0;
 }
 .hamburger span {
   width: 24px;
@@ -334,6 +345,24 @@
 }
 
 @media (max-width: 768px) {
+  .header {
+    height: 70px;
+  }
+  
+  .inner {
+    padding: 0 16px;
+  }
+
+  .logoWord {
+    font-size: 1.2rem;
+  }
+
+  .logoIcon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
   .hamburger {
     display: flex;
   }
@@ -349,9 +378,11 @@
     border-left: 1px solid rgba(255, 255, 255, 0.05);
     flex-direction: column;
     align-items: flex-start;
-    padding: 100px 24px 40px;
+    padding: 90px 24px 40px;
     transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+    z-index: 999;
+    overflow-y: auto;
   }
 
   .navOpen {
@@ -376,4 +407,72 @@
     padding: 14px;
     margin-bottom: 10px;
   }
+
+  .rightControls {
+    gap: 12px;
+  }
+
+  .langBtn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
 }
+
+@media (max-width: 480px) {
+  .header {
+    height: 60px;
+  }
+
+  .inner {
+    padding: 0 12px;
+  }
+
+  .logoWord {
+    font-size: 1rem;
+    display: none;
+  }
+
+  .logoIcon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+
+  .logo {
+    gap: 8px;
+  }
+
+  .hamburger {
+    width: 28px;
+    height: 28px;
+  }
+
+  .hamburger span {
+    width: 20px;
+    height: 1.5px;
+  }
+
+  .nav {
+    width: 100%;
+    padding: 70px 16px 40px;
+  }
+
+  .btnWishlist, .btnCart, .btnAdmin, .btnAccount {
+    padding: 12px;
+    font-size: 0.8rem;
+  }
+
+  .rightControls {
+    gap: 8px;
+  }
+
+  .langBtn {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+
+  .langDropdown {
+    min-width: 120px;
+  }
+}
+
