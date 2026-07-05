@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCart } from '../context/CartContext';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '../context/ThemeContext';
 import { useState, useEffect, useRef } from 'react';
 import styles from './Header.module.css';
 

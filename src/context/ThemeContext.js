@@ -15,8 +15,11 @@ export function ThemeProvider({ children }) {
       setThemeState(savedTheme);
       applyTheme(savedTheme);
     } else {
-      // Utiliser le thème sombre par défaut
-      applyTheme('dark');
+      // Vérifier la préférence système
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const defaultTheme = prefersDark ? 'dark' : 'light';
+      setThemeState(defaultTheme);
+      applyTheme(defaultTheme);
     }
     setMounted(true);
   }, []);
@@ -25,8 +28,12 @@ export function ThemeProvider({ children }) {
     const html = document.documentElement;
     if (themeToApply === 'light') {
       html.setAttribute('data-theme', 'light');
+      document.body.style.backgroundColor = '#FFFFFF';
+      document.body.style.color = '#0F172A';
     } else {
       html.setAttribute('data-theme', 'dark');
+      document.body.style.backgroundColor = '#020617';
+      document.body.style.color = '#F8FAFC';
     }
   };
 
@@ -43,6 +50,22 @@ export function ThemeProvider({ children }) {
     setTheme(newTheme);
   };
 
+  // Écouter les changements de préférence système
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e) => {
+      const newTheme = e.matches ? 'dark' : 'light';
+      // Seulement si l'utilisateur n'a pas défini de préférence
+      const savedTheme = localStorage.getItem('baya_shop_theme');
+      if (!savedTheme) {
+        setTheme(newTheme);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   return (
     <ThemeContext.Provider
       value={{
@@ -50,6 +73,8 @@ export function ThemeProvider({ children }) {
         setTheme,
         toggleTheme,
         mounted,
+        isDark: theme === 'dark',
+        isLight: theme === 'light',
       }}
     >
       {children}
