@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCart } from '../context/CartContext';
 import { useApp } from '../context/AppContext';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './Header.module.css';
 
 // ── Translations ────────────────────────────────────────
@@ -30,11 +30,10 @@ const translations = {
 
 export default function Header() {
   const { getCartCount, isLoaded } = useCart();
-  const { toggleSidebar, isAdminLoggedIn } = useApp();
+  const { toggleSidebar, isAdminLoggedIn, lang, setLang } = useApp();
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [lang, setLang] = useState('fr');
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const langRef = useRef(null);
 
@@ -42,11 +41,6 @@ export default function Header() {
 
   useEffect(() => {
     setMounted(true);
-    // Load saved language preference
-    const savedLang = localStorage.getItem('baya_shop_lang');
-    if (savedLang && translations[savedLang]) {
-      setLang(savedLang);
-    }
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -63,11 +57,10 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const switchLang = useCallback((newLang) => {
+  const switchLang = (newLang) => {
     setLang(newLang);
-    localStorage.setItem('baya_shop_lang', newLang);
     setLangDropdownOpen(false);
-  }, []);
+  };
 
   const cartCount = mounted && isLoaded ? getCartCount() : 0;
 
@@ -234,3 +227,4 @@ export default function Header() {
     </header>
   );
 }
+
