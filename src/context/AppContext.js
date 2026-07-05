@@ -7,6 +7,7 @@ const AppContext = createContext();
 export function AppProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [lang, setLangState] = useState('fr');
   const [clientProfile, setClientProfile] = useState({
     firstName: '',
     lastName: '',
@@ -21,13 +22,19 @@ export function AppProvider({ children }) {
 
   // Charger les données de session au démarrage
   useEffect(() => {
-    // 1. Session Administrateur
+    // 1. Langue sauvegardée
+    const savedLang = localStorage.getItem('baya_shop_lang');
+    if (savedLang && ['fr', 'en'].includes(savedLang)) {
+      setLangState(savedLang);
+    }
+
+    // 2. Session Administrateur
     const adminSession = sessionStorage.getItem('baya_admin_session');
     if (adminSession === 'active') {
       setIsAdminLoggedIn(true);
     }
 
-    // 2. Profil Client
+    // 3. Profil Client
     const savedProfile = localStorage.getItem('baya_client_profile');
     if (savedProfile) {
       try {
@@ -37,7 +44,7 @@ export function AppProvider({ children }) {
       }
     }
 
-    // 3. Commandes et Fidélité
+    // 4. Commandes et Fidélité
     const savedOrders = localStorage.getItem('baya_customer_orders_history');
     if (savedOrders) {
       try {
@@ -59,6 +66,14 @@ export function AppProvider({ children }) {
   const openSidebar = () => setIsSidebarOpen(true);
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
+  // Changer la langue
+  const setLang = (newLang) => {
+    if (['fr', 'en'].includes(newLang)) {
+      setLangState(newLang);
+      localStorage.setItem('baya_shop_lang', newLang);
+    }
+  };
 
   // Charger/Rafraîchir les données clients
   const loadClientData = () => {
@@ -115,6 +130,8 @@ export function AppProvider({ children }) {
         isAdminLoggedIn,
         loginAdmin,
         logoutAdmin,
+        lang,
+        setLang,
         clientProfile,
         saveClientProfile,
         customerOrders,
@@ -135,3 +152,4 @@ export function useApp() {
   }
   return context;
 }
+

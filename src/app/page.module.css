@@ -46,6 +46,8 @@
   gap: 22px;
   position: relative;
   overflow: hidden;
+  min-height: 100vh;
+  width: 100%;
 }
 
 .hero::before {
@@ -81,6 +83,8 @@
   text-shadow: 0 10px 30px rgba(0,0,0,0.5);
   position: relative;
   z-index: 2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .heroShape1 {
@@ -122,6 +126,8 @@
   color: #cbd5e1;
   max-width: 580px;
   line-height: 1.7;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .heroCtas {
@@ -130,6 +136,7 @@
   flex-wrap: wrap;
   justify-content: center;
   margin-top: 6px;
+  width: 100%;
 }
 
 /* Bootstrap-like buttons */
@@ -144,6 +151,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.3px;
+  flex: 1;
+  min-width: 150px;
 }
 .btnPrimary:hover {
   background: #15803d;
@@ -162,6 +171,8 @@
   border: 2px solid rgba(255, 255, 255, 0.35);
   cursor: pointer;
   transition: all 0.2s ease;
+  flex: 1;
+  min-width: 150px;
 }
 .btnOutline:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -177,6 +188,7 @@
   margin-top: 16px;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
 }
 .statItem {
   display: flex;
@@ -206,6 +218,8 @@
   background: #fff;
   border-bottom: 1px solid #e2e8f0;
   padding: 28px 24px;
+  width: 100%;
+  overflow-x: hidden;
 }
 .featureGrid {
   max-width: 1280px;
@@ -213,6 +227,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 24px;
+  padding: 0 24px;
 }
 .featureCard {
   display: flex;
@@ -248,11 +263,14 @@
 .catalogueSection {
   background: #f0fdf4;
   padding: 60px 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 .container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 24px;
+  width: 100%;
 }
 
 .sectionHeader {
@@ -280,6 +298,8 @@
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.5px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .sectionSubtitle {
   font-size: 0.95rem;
@@ -300,10 +320,12 @@
   border-radius: 12px;
   padding: 20px 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  width: 100%;
 }
 
 .searchWrapper {
   position: relative;
+  width: 100%;
 }
 .searchIcon {
   position: absolute;
@@ -323,6 +345,7 @@
   background: #f8fafc;
   outline: none;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 .searchInput:focus {
   border-color: #22c55e;
@@ -337,6 +360,8 @@
   flex-wrap: wrap;
   border-bottom: 2px solid #e2e8f0;
   padding-bottom: 0;
+  width: 100%;
+  overflow-x: auto;
 }
 .tabBtn {
   padding: 8px 20px;
@@ -351,6 +376,7 @@
   transition: all 0.18s ease;
   position: relative;
   bottom: -2px;
+  white-space: nowrap;
 }
 .tabBtn:hover {
   color: #16a34a;
@@ -368,6 +394,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 28px;
+  width: 100%;
 }
 
 .productCard {
@@ -391,6 +418,7 @@
   height: 220px;
   overflow: hidden;
   background: #f8fafc;
+  width: 100%;
 }
 .productImage {
   width: 100%;
@@ -493,6 +521,8 @@
   font-weight: 700;
   color: #0f172a;
   line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .productDesc {
   font-size: 0.83rem;
@@ -522,6 +552,7 @@
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid #f1f5f9;
+  gap: 12px;
 }
 .productPrice {
   font-size: 1.2rem;
@@ -541,6 +572,7 @@
   cursor: pointer;
   transition: all 0.18s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .addBtn:hover:not(:disabled) {
   background: #15803d;
@@ -592,6 +624,8 @@
   background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0e4d29 100%);
   padding: 70px 0;
   color: #fff;
+  width: 100%;
+  overflow-x: hidden;
 }
 .trustTitle {
   text-align: center;
@@ -600,6 +634,8 @@
   letter-spacing: -0.5px;
   margin-bottom: 44px;
   color: #fff;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .trustGrid {
   display: grid;
@@ -647,6 +683,8 @@
 .reviewsSection {
   background: #f8fafc;
   padding: 60px 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 .reviewsHeader {
   display: flex;
@@ -666,6 +704,7 @@
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+  white-space: nowrap;
 }
 .addReviewBtn:hover {
   background: #15803d;
@@ -697,6 +736,8 @@
   font-size: 0.95rem;
   line-height: 1.6;
   flex-grow: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .reviewAuthorRow {
   display: flex;
@@ -716,11 +757,14 @@
   justify-content: center;
   font-weight: bold;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 .reviewAuthorName {
   font-weight: 700;
   color: #0f172a;
   font-size: 0.9rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .reviewDate {
   font-size: 0.8rem;
@@ -747,6 +791,8 @@
   padding: 30px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.2);
   animation: slideInToast 0.3s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .modalHeader {
   display: flex;
@@ -758,6 +804,8 @@
   font-size: 1.4rem;
   font-weight: 800;
   color: #0f172a;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .modalCloseBtn {
   background: transparent;
@@ -766,26 +814,231 @@
   color: #64748b;
   cursor: pointer;
   line-height: 1;
+  flex-shrink: 0;
 }
 .modalCloseBtn:hover {
   color: #ef4444;
 }
 
 /* ─── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .featureGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .productsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  .reviewsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
-  .heroTitle { font-size: 2rem; }
-  .heroCtas { flex-direction: column; align-items: stretch; }
-  .btnPrimary, .btnOutline { text-align: center; }
-  .heroStats { gap: 20px; }
-  .statDivider { height: 30px; }
-  .sectionHeader { flex-direction: column; align-items: flex-start; }
-  .sectionSubtitle { text-align: left; }
-  .featureGrid { grid-template-columns: 1fr 1fr; }
-  .filtersBar { padding: 16px; }
+  .hero {
+    padding: 60px 20px 50px;
+    min-height: auto;
+  }
+  .heroTitle {
+    font-size: clamp(1.8rem, 5vw, 2.5rem);
+  }
+  .heroSubtitle {
+    font-size: 0.95rem;
+  }
+  .heroCtas {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btnPrimary, .btnOutline {
+    width: 100%;
+    flex: none;
+    min-width: unset;
+  }
+  .heroStats {
+    gap: 16px;
+    flex-direction: column;
+  }
+  .statDivider {
+    display: none;
+  }
+  .featureGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 0;
+  }
+  .featureBand {
+    padding: 20px 16px;
+  }
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .sectionTitle {
+    font-size: 1.5rem;
+  }
+  .sectionSubtitle {
+    text-align: left;
+    max-width: 100%;
+  }
+  .filtersBar {
+    padding: 16px;
+  }
+  .tabsRow {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .productsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .imageWrapper {
+    height: 180px;
+  }
+  .cardBody {
+    padding: 14px 16px 16px;
+  }
+  .productName {
+    font-size: 0.95rem;
+  }
+  .cardFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .addBtn {
+    width: 100%;
+  }
+  .trustTitle {
+    font-size: 1.4rem;
+  }
+  .trustGrid {
+    grid-template-columns: 1fr;
+  }
+  .reviewsGrid {
+    grid-template-columns: 1fr;
+  }
+  .modalContent {
+    padding: 24px;
+    border-radius: 12px;
+  }
+  .modalHeader h2 {
+    font-size: 1.2rem;
+  }
+  .container {
+    padding: 0 16px;
+  }
 }
 
 @media (max-width: 480px) {
-  .featureGrid { grid-template-columns: 1fr; }
-  .productsGrid { grid-template-columns: 1fr; }
-  .hero { padding: 60px 20px 50px; }
+  .hero {
+    padding: 50px 16px 40px;
+  }
+  .heroTitle {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+  }
+  .heroSubtitle {
+    font-size: 0.9rem;
+  }
+  .heroBadge {
+    font-size: 0.75rem;
+    padding: 4px 12px;
+  }
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+  .featureCard {
+    padding: 12px;
+    gap: 10px;
+  }
+  .featureIcon {
+    font-size: 1.5rem;
+  }
+  .featureTitle {
+    font-size: 0.85rem;
+  }
+  .featureDesc {
+    font-size: 0.75rem;
+  }
+  .sectionTitle {
+    font-size: 1.3rem;
+  }
+  .sectionBadge {
+    font-size: 0.7rem;
+  }
+  .filtersBar {
+    padding: 12px;
+    gap: 12px;
+  }
+  .searchInput {
+    font-size: 0.9rem;
+    padding: 10px 14px 10px 36px;
+  }
+  .tabBtn {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+  }
+  .productsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .imageWrapper {
+    height: 150px;
+  }
+  .productCard {
+    border-radius: 8px;
+  }
+  .cardBody {
+    padding: 12px 14px 14px;
+    gap: 8px;
+  }
+  .productName {
+    font-size: 0.9rem;
+  }
+  .productPrice {
+    font-size: 1rem;
+  }
+  .addBtn {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  .trustTitle {
+    font-size: 1.2rem;
+    margin-bottom: 24px;
+  }
+  .trustCard {
+    padding: 20px 16px;
+  }
+  .trustCardTitle {
+    font-size: 0.9rem;
+  }
+  .trustCardDesc {
+    font-size: 0.8rem;
+  }
+  .reviewsGrid {
+    grid-template-columns: 1fr;
+  }
+  .reviewCard {
+    padding: 16px;
+  }
+  .reviewComment {
+    font-size: 0.9rem;
+  }
+  .addReviewBtn {
+    width: 100%;
+  }
+  .modalContent {
+    padding: 20px;
+    margin: 20px;
+  }
+  .modalHeader h2 {
+    font-size: 1.1rem;
+  }
+  .container {
+    padding: 0 12px;
+  }
+  .toastNotification {
+    bottom: 16px;
+    right: 16px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+  }
 }
+
