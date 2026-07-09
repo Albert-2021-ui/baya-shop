@@ -1,55 +1,20 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import fs from 'fs/promises';
+import path from 'path';
+
+const filePath = path.join(process.cwd(), 'src', 'data', 'orders.json');
 
 // GET /api/orders - Récupérer toutes les commandes
 export async function GET() {
   try {
-    const dbOrders = await prisma.order.findMany({
-      include: {
-        items: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-
-    // Transformer le format de la DB vers le format attendu par le frontend (legacy json)
-    const orders = dbOrders.map(order => {
-      // Reconstruire subtotal et shippingFee
-      const subtotal = order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-      const shippingFee = order.total - subtotal;
-      
-      return {
-        id: order.id,
-        status: order.status,
-        date: order.createdAt.toISOString(),
-        total: order.total,
-        subtotal: subtotal,
-        shippingFee: shippingFee,
-        customer: {
-          firstName: order.customerName.split(' ')[0] || '',
-          lastName: order.customerName.split(' ').slice(1).join(' ') || '',
-          email: order.customerEmail,
-          phone: order.customerPhone,
-          address: order.customerAddress,
-          city: order.customerCity
-        },
-        payment: {
-          reference: order.reference,
-          method: order.paymentMethod,
-          provider: order.paymentMethod === 'direct_transfer' ? 'transfert_direct' : order.paymentMethod,
-          details: order.transactionId,
-          phone: order.paymentMethod === 'direct_transfer' ? order.transactionId : null
-        },
-        items: order.items.map(item => ({
-          id: item.productId,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        }))
-      };
-    });
-
+    let orders = [];
+    try {
+      const data = await fs.readFile(filePath, 'utf8');
+      orders = JSON.parse(data);
+    } catch (e) {
+      // Si le fichier n'existe pas, retourner un tableau vide
+      orders = [];
+    }
     return NextResponse.json(orders);
   } catch (error) {
     console.error('Erreur lors de la lecture des commandes:', error);
@@ -65,15 +30,20 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Données manquantes.' }, { status: 400 });
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: parseInt(orderId) },
-      data: {
-        status: newStatus,
-        paymentStatus: newStatus === 'delivered' ? 'PAID' : undefined
-      }
-    });
+    const data = await fs.readFile(filePath, 'utf8');
+    const orders = JSON.parse(data);
     
-    return NextResponse.json({ success: true, order: updatedOrder });
+    const orderIndex = orders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) {
+      return NextResponse.json({ error: 'Commande non trouvée.' }, { status: 404 });
+    }
+
+    // Mettre à jour le statut
+    orders[orderIndex].status = newStatus;
+    
+    await fs.writeFile(filePath, JSON.stringify(orders, null, 2), 'utf8');
+    
+    return NextResponse.json({ success: true, order: orders[orderIndex] });
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la commande:', error);
     return NextResponse.json({ error: 'Impossible de mettre à jour la commande.' }, { status: 500 });

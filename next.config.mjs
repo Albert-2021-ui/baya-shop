@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuration des images pour autoriser les domaines externes
   images: {
     remotePatterns: [
       {
@@ -9,17 +8,16 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '**.cloudinary.com',
+        hostname: '**.unsplash.com',
       },
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        hostname: '**',
       },
     ],
-  },
-  // Ne pas bloquer le build si TypeScript a des erreurs (projet JS)
-  typescript: {
-    ignoreBuildErrors: true,
+    // Allow unoptimized external images as fallback
+    unoptimized: false,
+    minimumCacheTTL: 86400,
   }
 }
 

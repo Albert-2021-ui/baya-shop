@@ -4,10 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import { formatPrice } from '../../utils/formatPrice';
 import styles from './page.module.css';
 
 export default function CheckoutPage() {
   const { cart, getCartTotal, clearCart, isLoaded } = useCart();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
@@ -46,11 +49,10 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
 
-  // Charger la configuration des paiements et pré-remplir avec le profil client
+  // Load config + pre-fill form from auth user or legacy profile
   useEffect(() => {
     setMounted(true);
-    
-    // 1. Charger les coordonnées d'Albert depuis l'API
+
     async function loadConfig() {
       try {
         const res = await fetch('/api/payment/config');
@@ -59,29 +61,42 @@ export default function CheckoutPage() {
           setConfig(data);
         }
       } catch (err) {
-        console.error('Erreur lors du chargement des coordonnées d\'Albert:', err);
+        console.error('Erreur config paiement:', err);
       }
     }
     loadConfig();
 
-    // 2. Pré-remplir le formulaire si un profil client est enregistré localement (Fidélisation)
+    // Priority 1: use the logged-in user's profile
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName:  user.lastName  || '',
+        email:     user.email     || '',
+        phone:     user.phone     || '',
+        address:   user.address   || '',
+        city:      user.city      || '',
+      });
+      return; // don't overwrite with legacy profile
+    }
+
+    // Priority 2: legacy baya_client_profile fallback
     const savedProfile = localStorage.getItem('baya_client_profile');
     if (savedProfile) {
       try {
         const profile = JSON.parse(savedProfile);
         setFormData({
           firstName: profile.firstName || '',
-          lastName: profile.lastName || '',
-          email: profile.email || '',
-          phone: profile.phone || '',
-          address: profile.address || '',
-          city: profile.city || '',
+          lastName:  profile.lastName  || '',
+          email:     profile.email     || '',
+          phone:     profile.phone     || '',
+          address:   profile.address   || '',
+          city:      profile.city      || '',
         });
       } catch (e) {
         console.error(e);
       }
     }
-  }, []);
+  }, [user]);
 
   if (!mounted || !isLoaded) {
     return (
@@ -112,14 +127,6 @@ export default function CheckoutPage() {
   const shippingFee = subtotal >= 150000 ? 0 : 2000;
   const total = subtotal + shippingFee;
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price).replace('XOF', 'FCFA');
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -154,6 +161,7 @@ export default function CheckoutPage() {
     // 1. Préparer le payload de commande
     const orderPayload = {
       customer: formData,
+      userId: user?.id || null,           // ← link order to auth user
       items: cart,
       payment: {
         method: paymentGateway,
@@ -189,9 +197,27 @@ export default function CheckoutPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.redirectUrl) {
-            setProcessingMessage(data.realGateway 
-              ? 'Connexion sécurisée établie. Redirection...' 
+            setProcessingMessage(data.realGateway
+              ? 'Connexion sécurisée établie. Redirection...'
               : 'Redirection vers la passerelle de test locale...');
+
+            // Save a "pending" order to history NOW (sandbox will update it)
+            const pendingOrder = {
+              ...orderPayload,
+              id: orderReference,
+              status: 'pending',
+            };
+            let clientHistory = [];
+            const savedHistory = localStorage.getItem('baya_customer_orders_history');
+            if (savedHistory) {
+              try { clientHistory = JSON.parse(savedHistory); } catch(e) {}
+            }
+            // Avoid duplicate if user refreshes
+            if (!clientHistory.find(o => o.id === orderReference)) {
+              clientHistory.push(pendingOrder);
+              localStorage.setItem('baya_customer_orders_history', JSON.stringify(clientHistory));
+            }
+
             setTimeout(() => {
               window.location.href = data.redirectUrl;
             }, 1000);
@@ -229,9 +255,7 @@ export default function CheckoutPage() {
         const res = await fetch('/api/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderData: orderPayload,
-          })
+          body: JSON.stringify(orderPayload)
         });
 
         if (res.ok) {
@@ -438,46 +462,29 @@ export default function CheckoutPage() {
               {/* TRANSFERT DIRECT MOBILE MONEY */}
               {paymentGateway === 'direct_transfer' && (
                 <div className="animate-fade" style={{ textAlign: 'left' }}>
-                  <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '20px' }}>
-                    <p style={{ fontWeight: '600', color: 'var(--primary)', marginBottom: '12px' }}>
-                      Paiement Manuel via Mobile Money
-                    </p>
-                    <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', marginBottom: '8px' }}>
-                      Veuillez transférer le montant exact de <b>{formatPrice(total)}</b> sur l'un de nos numéros :
-                    </p>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                      <div style={{ background: '#FFFFFF', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <span style={{ fontWeight: '700', color: '#000', display: 'block', fontSize: '0.95rem' }}>MTN MoMo / Moov / Orange</span>
-                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Numéro Principal</span>
-                        </div>
-                        <span style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '1.2rem', letterSpacing: '1px' }}>01 63 09 74 98</span>
+                  <p style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '12px' }}>
+                    Faites un transfert Mobile Money direct du montant de <b>{formatPrice(total)}</b> sur l'un de nos numéros réels :
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    {config.momoNumbers.map((momo, idx) => (
+                      <div key={idx} style={{ background: '#FFFFFF', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: '600', fontSize: '0.85rem' }}>{momo.operator}</span>
+                        <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.05rem' }}>{momo.number}</span>
                       </div>
-                      <div style={{ background: '#FFFFFF', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <span style={{ fontWeight: '700', color: '#000', display: 'block', fontSize: '0.95rem' }}>MTN MoMo / Moov / Orange</span>
-                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Numéro Secondaire</span>
-                        </div>
-                        <span style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '1.2rem', letterSpacing: '1px' }}>01 53 37 49 53</span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
 
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
-                    Après avoir effectué le dépôt, remplissez le formulaire ci-dessous pour que nous puissions valider votre paiement :
-                  </p>
-
                   <div className="input-group">
-                    <label className="input-label">Opérateur utilisé pour le transfert *</label>
+                    <label className="input-label">Opérateur utilisé *</label>
                     <select
                       value={directMomoDetails.operator}
                       onChange={(e) => setDirectMomoDetails({ ...directMomoDetails, operator: e.target.value })}
                       className="input-field"
                     >
+                      <option value="Orange">Orange Money</option>
                       <option value="MTN">MTN MoMo</option>
                       <option value="Moov">Moov Money</option>
-                      <option value="Orange">Orange Money</option>
                       <option value="Wave">Wave</option>
                     </select>
                   </div>

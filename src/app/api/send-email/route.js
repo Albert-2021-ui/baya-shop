@@ -3,12 +3,10 @@ import { sendConfirmationEmail } from '../../../utils/sendEmail';
 
 export async function POST(request) {
   try {
-    
-    const { order} = await request.json();
+    const { order } = await request.json();
     if (!order) {
       return NextResponse.json({ error: 'Commande manquante.' }, { status: 400 });
     }
-    console.log(JSON.stringify(order, null, 2));
 
     const result = await sendConfirmationEmail(order);
     
