@@ -351,12 +351,13 @@ export default function Home() {
                         🛒
                       </button>
                       <button 
-                        className={styles.quickBtn} 
+                        className={`${styles.quickBtn} ${isInWishlist(product.id) ? styles.quickBtnActive : ''}`} 
                         onClick={() => {
+                          const wasInWishlist = isInWishlist(product.id);
                           toggleWishlist(product);
-                          triggerNotification(isInWishlist(product.id) ? 'Retiré des favoris' : 'Ajouté aux favoris !');
+                          triggerNotification(wasInWishlist ? 'Retiré des favoris' : '❤️ Ajouté aux favoris !');
                         }} 
-                        title="Mettre en favori"
+                        title={isInWishlist(product.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                       >
                         {isInWishlist(product.id) ? '❤️' : '🤍'}
                       </button>

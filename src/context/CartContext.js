@@ -80,7 +80,7 @@ export function CartProvider({ children }) {
         getCartCount,
         isLoaded
       }}
-    >
+      >
       {children}
     </CartContext.Provider>
   );

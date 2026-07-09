@@ -4,7 +4,8 @@ import prisma from '../../../../lib/prisma';
 // PUT /api/products/[id] - Modifier un produit
 export async function PUT(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     const updatedData = await request.json();
 
     const product = await prisma.product.update({
@@ -29,7 +30,8 @@ export async function PUT(request, { params }) {
 // DELETE /api/products/[id] - Supprimer un produit
 export async function DELETE(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     await prisma.product.delete({
       where: { id }
