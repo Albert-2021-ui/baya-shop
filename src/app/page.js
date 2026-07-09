@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useApp } from '../context/AppContext';
-import { useWishlist } from '../context/WishlistContext';
-import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import { formatPrice } from '../utils/formatPrice';
+import Image from 'next/image';
+import Link from 'next/link';
 import styles from './page.module.css';
 
 export default function Home() {
   const { addToCart } = useCart();
   const { openSidebar } = useApp();
-  const { toggleWishlist, isInWishlist } = useWishlist();
+  const { user, isAuthLoaded } = useAuth();
 
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -19,14 +21,9 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('Tous');
   const [categories, setCategories] = useState(['Tous']);
   const [notification, setNotification] = useState(null);
+  const [sortBy, setSortBy] = useState('default'); // default, price-asc, price-desc, rating
 
-  // States pour les avis clients
-  const [reviews, setReviews] = useState([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [newReview, setNewReview] = useState({ authorName: '', rating: 5, comment: '' });
-  const [submittingReview, setSubmittingReview] = useState(false);
-
+  // Charger les produits
   useEffect(() => {
     async function fetchProducts() {
       try {
@@ -44,391 +41,292 @@ export default function Home() {
         setLoading(false);
       }
     }
-    
-    async function fetchReviews() {
-      try {
-        const res = await fetch('/api/reviews');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.length === 0) {
-            setReviews([
-              { id: 'f1', authorName: 'Marc A.', rating: 5, comment: 'Boutique exceptionnelle. La livraison a été hyper rapide et le produit est d\'une qualité incroyable.', createdAt: new Date().toISOString() },
-              { id: 'f2', authorName: 'Sophie L.', rating: 5, comment: 'Le paiement mobile money direct est super pratique. L\'équipe est très réactive. Je recommande !', createdAt: new Date().toISOString() },
-              { id: 'f3', authorName: 'Cédric K.', rating: 4, comment: 'Très satisfait de mon achat. Les prix sont corrects pour la qualité premium offerte.', createdAt: new Date().toISOString() }
-            ]);
-          } else {
-            setReviews(data);
-          }
-        }
-      } catch (err) {
-        console.error('Erreur chargement avis:', err);
-      } finally {
-        setLoadingReviews(false);
-      }
-    }
-
     fetchProducts();
-    fetchReviews();
   }, []);
 
+  // Filtrer et trier les produits
   useEffect(() => {
-    let result = products;
+    let result = [...products];
+
     if (selectedCategory !== 'Tous') {
       result = result.filter((p) => p.category === selectedCategory);
     }
+
     if (search.trim() !== '') {
-      result = result.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase())
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.description.toLowerCase().includes(search.toLowerCase())
       );
     }
+
+    if (sortBy === 'price-asc')  result.sort((a, b) => a.price - b.price);
+    if (sortBy === 'price-desc') result.sort((a, b) => b.price - a.price);
+    if (sortBy === 'rating')     result.sort((a, b) => b.rating - a.rating);
+
     setFilteredProducts(result);
-  }, [search, selectedCategory, products]);
+  }, [search, selectedCategory, products, sortBy]);
 
   const handleAddToCart = (product) => {
+    if (product.stock <= 0) return;
     addToCart(product);
-    triggerNotification(`${product.name} ajouté au panier !`);
-  };
-
-  const triggerNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
-      .format(price)
-      .replace('XOF', 'FCFA');
-  };
-
-  const submitReview = async (e) => {
-    e.preventDefault();
-    if (!newReview.authorName || !newReview.comment) return;
-    setSubmittingReview(true);
-    try {
-      const res = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newReview)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setReviews([data.review, ...reviews.filter(r => !r.id.toString().startsWith('f'))]);
-        setShowReviewModal(false);
-        setNewReview({ authorName: '', rating: 5, comment: '' });
-        triggerNotification('Merci pour votre avis !');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Erreur réseau');
-    } finally {
-      setSubmittingReview(false);
-    }
-  };
-
-  const fadeInUp = {
-    hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
-  };
-
-  const staggerContainer = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
+    setNotification(product.name);
+    setTimeout(() => setNotification(null), 3500);
   };
 
   return (
-    <div style={{ paddingBottom: '0' }}>
-      {/* Toast */}
+    <div className="container" style={{ paddingBottom: '60px' }}>
+      {/* Toast with cart shortcut */}
       {notification && (
-        <div className="toast-notification">
-          <span>{notification}</span>
-        </div>
-      )}
-
-      {/* Modale d'Avis */}
-      {showReviewModal && (
-        <div className={styles.modalOverlay}>
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }} 
-            animate={{ opacity: 1, scale: 1 }} 
-            className={`${styles.modalContent} glass-card`}
-            style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.1)' }}
+        <div className="toast-notification" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>✓ <strong>{notification}</strong> ajouté au panier !</span>
+          <Link
+            href="/cart"
+            style={{
+              background: 'rgba(255,255,255,0.22)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: '6px',
+              padding: '4px 12px',
+              fontSize: '0.8rem',
+              fontWeight: '700',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
           >
-            <div className={styles.modalHeader}>
-              <h2 style={{ color: '#F8FAFC' }}>Laisser un avis</h2>
-              <button onClick={() => setShowReviewModal(false)} className={styles.modalCloseBtn}>&times;</button>
-            </div>
-            <form onSubmit={submitReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="input-group">
-                <label className="input-label">Votre Prénom / Nom</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Ex: Jean D."
-                  value={newReview.authorName}
-                  onChange={e => setNewReview({...newReview, authorName: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Note (sur 5)</label>
-                <select 
-                  className="input-field"
-                  value={newReview.rating}
-                  onChange={e => setNewReview({...newReview, rating: parseInt(e.target.value)})}
-                  style={{ backgroundColor: '#0F172A', color: '#F8FAFC' }}
-                >
-                  <option value={5}>⭐⭐⭐⭐⭐ (Excellent)</option>
-                  <option value={4}>⭐⭐⭐⭐ (Très Bien)</option>
-                  <option value={3}>⭐⭐⭐ (Bien)</option>
-                  <option value={2}>⭐⭐ (Passable)</option>
-                  <option value={1}>⭐ (Décevant)</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label className="input-label">Votre commentaire</label>
-                <textarea
-                  className="input-field"
-                  rows="4"
-                  placeholder="Partagez votre expérience..."
-                  value={newReview.comment}
-                  onChange={e => setNewReview({...newReview, comment: e.target.value})}
-                  required
-                ></textarea>
-              </div>
-              <button type="submit" className="gradient-button" style={{ padding: '12px', borderRadius: '8px' }} disabled={submittingReview}>
-                {submittingReview ? 'Envoi...' : 'Publier mon avis'}
-              </button>
-            </form>
-          </motion.div>
+            Voir le panier →
+          </Link>
         </div>
       )}
 
-      {/* ─── HERO ─────────────────────────────────────────────── */}
-      <section className={styles.hero} style={{ background: 'transparent' }}>
-        {/* Animated Background Orbs */}
-        <div className={styles.heroShape1}></div>
-        <div className={styles.heroShape2}></div>
-
-        <motion.div initial="hidden" animate="visible" variants={fadeInUp} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div className="badge" style={{ marginBottom: '20px' }}>✨ L'excellence du shopping digital</div>
-          <h1 className={styles.heroTitle} style={{ color: '#F8FAFC' }}>
-            La boutique qui redéfinit<br />
-            <span className="gradient-text">votre expérience d'achat</span>
-          </h1>
-          <p className={styles.heroSubtitle} style={{ marginTop: '20px' }}>
-            Découvrez nos collections premium avec des paiements sécurisés via Mobile Money, carte bancaire et virement.
-          </p>
-          <div className={styles.heroCtas} style={{ marginTop: '30px' }}>
-            <button
-              onClick={() => document.getElementById('catalogue').scrollIntoView({ behavior: 'smooth' })}
-              className="gradient-button" style={{ padding: '14px 32px', borderRadius: '8px', fontSize: '1rem' }}
-            >
-              Découvrir le catalogue
-            </button>
-            <button onClick={openSidebar} className={styles.btnOutline} style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
-              Mon Espace Client
-            </button>
+      {/* Hero */}
+      <section className={styles.heroSection}>
+        <div className={styles.heroBadge}>🇧🇯 Livraison Bénin & Afrique de l'Ouest</div>
+        <h1 className={`${styles.heroTitle} gradient-text`}>
+          Boutique Moderne<br />BAYA SHOP
+        </h1>
+        <p className={styles.heroSubtitle}>
+          Découvrez nos collections d'exception — Électronique, Mode & Lifestyle. Paiement sécurisé via Mobile Money, FedaPay & CinetPay.
+        </p>
+        <div className={styles.heroStats}>
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatNum}>{products.length}+</span>
+            <span className={styles.heroStatLabel}>Produits</span>
           </div>
-        </motion.div>
-
-        {/* Stats row */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.6 }}
-          className={styles.heroStats} style={{ marginTop: '50px' }}
-        >
-          <div className={styles.statItem}>
-            <span className={styles.statNum} style={{ color: '#F8FAFC' }}>500+</span>
-            <span className={styles.statLabel}>Clients satisfaits</span>
+          <div className={styles.heroStatDivider} />
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatNum}>4</span>
+            <span className={styles.heroStatLabel}>Modes de paiement</span>
           </div>
-          <div className={styles.statDivider} />
-          <div className={styles.statItem}>
-            <span className={styles.statNum} style={{ color: '#10B981' }}>100%</span>
-            <span className={styles.statLabel}>Sécurisé</span>
+          <div className={styles.heroStatDivider} />
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatNum}>24h</span>
+            <span className={styles.heroStatLabel}>Livraison express</span>
           </div>
-          <div className={styles.statDivider} />
-          <div className={styles.statItem}>
-            <span className={styles.statNum} style={{ color: '#38BDF8' }}>24h</span>
-            <span className={styles.statLabel}>Livraison express</span>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* ─── FEATURES BAND ───────────────────────────────────── */}
-      <motion.section 
-        initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeInUp}
-        className={styles.featureBand} style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
-      >
-        <div className={styles.featureGrid}>
-          {[
-            { icon: '🔒', title: 'Paiement Sécurisé', desc: 'Mobile Money, carte & virement' },
-            { icon: '⚡', title: 'Livraison Rapide', desc: 'Partout en Afrique de l\'Ouest' },
-            { icon: '🏆', title: 'Qualité Premium', desc: 'Produits sélectionnés avec soin' },
-            { icon: '🎯', title: 'Support 24/7', desc: 'Une équipe à votre service' },
-          ].map((f, i) => (
-            <motion.div key={f.title} whileHover={{ y: -5 }} className={styles.featureCard} style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(15,23,42,0.5)' }}>
-              <span className={styles.featureIcon}>{f.icon}</span>
-              <div>
-                <div className={styles.featureTitle} style={{ color: '#F8FAFC' }}>{f.title}</div>
-                <div className={styles.featureDesc} style={{ color: '#94A3B8' }}>{f.desc}</div>
-              </div>
-            </motion.div>
-          ))}
         </div>
-      </motion.section>
-
-      {/* ─── CATALOGUE ────────────────────────────────────────── */}
-      <section id="catalogue" className={styles.catalogueSection} style={{ background: 'transparent', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <div className={styles.container}>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className={styles.sectionHeader}>
-            <div>
-              <span className="badge">Notre catalogue</span>
-              <h2 className={styles.sectionTitle} style={{ color: '#F8FAFC', marginTop: '10px' }}>Tous nos produits</h2>
-            </div>
-            <p className={styles.sectionSubtitle} style={{ color: '#94A3B8' }}>
-              Des articles soigneusement sélectionnés pour vous offrir le meilleur.
-            </p>
-          </motion.div>
-
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className={styles.filtersBar} style={{ background: 'rgba(15,23,42,0.8)', borderColor: 'rgba(255,255,255,0.08)' }}>
-            <div className={styles.searchWrapper}>
-              <span className={styles.searchIcon}>🔍</span>
-              <input
-                type="text"
-                placeholder="Rechercher un produit..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field" style={{ width: '100%', paddingLeft: '40px' }}
-              />
-            </div>
-            <div className={styles.tabsRow} style={{ borderBottom: '2px solid rgba(255,255,255,0.05)' }}>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`${styles.tabBtn} ${selectedCategory === cat ? styles.tabBtnActive : ''}`}
-                  style={selectedCategory === cat ? { background: '#10B981', color: '#fff', borderColor: '#10B981' } : {}}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
-          {loading ? (
-            <div className={styles.loadingWrapper}>
-              <div className="loading-spinner" />
-              <p className={styles.loadingText} style={{ color: '#94A3B8' }}>Chargement des collections...</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={styles.emptyState}>
-              <span style={{ fontSize: '3rem' }}>🔎</span>
-              <p style={{ color: '#94A3B8' }}>Aucun produit ne correspond à votre recherche.</p>
-            </motion.div>
+        <div className={styles.heroCtas}>
+          {isAuthLoaded && user ? (
+            <Link href="/dashboard" className={styles.heroAccountBtn}>
+              🏠 Mon Dashboard
+            </Link>
           ) : (
-            <motion.div 
-              variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
-              className={styles.productsGrid}
-            >
-              {filteredProducts.map((product) => (
-                <motion.div variants={fadeInUp} key={product.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <div className={styles.imageWrapper}>
-                    <img src={product.image} alt={product.name} className={styles.productImage} />
-                    <span className={styles.categoryBadge}>{product.category}</span>
-                    {product.stock <= 3 && product.stock > 0 && (
-                      <span className={styles.stockWarning}>Plus que {product.stock} !</span>
-                    )}
-                    <div className={styles.quickActions}>
-                      <button className={styles.quickBtn} onClick={() => handleAddToCart(product)} title="Ajouter au panier">
-                        🛒
-                      </button>
-                      <button 
-                        className={`${styles.quickBtn} ${isInWishlist(product.id) ? styles.quickBtnActive : ''}`} 
-                        onClick={() => {
-                          const wasInWishlist = isInWishlist(product.id);
-                          toggleWishlist(product);
-                          triggerNotification(wasInWishlist ? 'Retiré des favoris' : '❤️ Ajouté aux favoris !');
-                        }} 
-                        title={isInWishlist(product.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                      >
-                        {isInWishlist(product.id) ? '❤️' : '🤍'}
-                      </button>
-                    </div>
-                  </div>
-                  <div className={styles.cardBody}>
-                    <h3 className={styles.productName} style={{ color: '#F8FAFC' }}>{product.name}</h3>
-                    <p className={styles.productDesc} style={{ color: '#94A3B8' }}>{product.description}</p>
-                    <div className={styles.ratingRow}>
-                      {'★★★★★'.split('').map((s, i) => (
-                        <span key={i} style={{ color: i < Math.round(product.rating || 4) ? '#F59E0B' : '#334155' }}>★</span>
-                      ))}
-                      <span className={styles.ratingCount}>({product.stock} en stock)</span>
-                    </div>
-                    <div className={styles.cardFooter} style={{ borderTopColor: 'rgba(255,255,255,0.05)' }}>
-                      <div>
-                        <span className={styles.productPrice} style={{ color: '#10B981' }}>{formatPrice(product.price)}</span>
-                      </div>
-                      <button onClick={() => handleAddToCart(product)} className="gradient-button" style={{ padding: '8px 16px', borderRadius: '6px' }} disabled={product.stock <= 0}>
-                        {product.stock <= 0 ? 'Indisponible' : '🛒 Au panier'}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+            <>
+              <Link href="/register" className={styles.heroRegisterBtn}>
+                ✨ Créer mon compte
+              </Link>
+              <Link href="/login" className={styles.heroLoginBtn}>
+                Se connecter
+              </Link>
+            </>
           )}
         </div>
       </section>
 
-      {/* ─── REVIEWS SECTION (AVIS CLIENTS) ─────────────────── */}
-      <section className={styles.reviewsSection} style={{ background: 'rgba(255,255,255,0.01)', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-        <div className={styles.container}>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className={styles.reviewsHeader}>
+      {/* ── Trust badges ── */}
+      <section className={styles.trustRow}>
+        <div className={styles.trustBadge}><span>🔒</span><span>Paiement 100% Sécurisé</span></div>
+        <div className={styles.trustBadge}><span>📦</span><span>Livraison Express 24h</span></div>
+        <div className={styles.trustBadge}><span>✅</span><span>Satisfait ou Remboursé</span></div>
+        <div className={styles.trustBadge}><span>🏆</span><span>Qualité Premium Garantie</span></div>
+      </section>
+
+      {/* ── Produits Vedettes ── */}
+      {!loading && products.filter(p => p.stock > 0).sort((a,b) => b.rating - a.rating).slice(0,3).length > 0 && (
+        <section className={styles.featuredSection}>
+          <div className={styles.featuredHeader}>
             <div>
-              <span className="badge">Témoignages</span>
-              <h2 className={styles.sectionTitle} style={{ color: '#F8FAFC', marginTop: '10px' }}>Ce que disent nos clients</h2>
+              <h2 className={styles.featuredTitle}>🔥 Produits Vedettes</h2>
+              <p className={styles.featuredSub}>Les meilleures ventes de la boutique</p>
             </div>
-            <button onClick={() => setShowReviewModal(true)} className="gradient-button" style={{ padding: '10px 20px', borderRadius: '8px' }}>
-              ✎ Laisser un avis
-            </button>
-          </motion.div>
-          
-          <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }} className={styles.reviewsGrid}>
-            {loadingReviews ? (
-              <p style={{ color: '#94A3B8' }}>Chargement des avis...</p>
-            ) : reviews.slice(0, 3).map((review) => (
-              <motion.div variants={fadeInUp} key={review.id} className="glass-card" style={{ padding: '24px' }}>
-                <div className={styles.reviewRating}>
-                  {'★★★★★'.split('').map((s, i) => (
-                    <span key={i} style={{ color: i < review.rating ? '#F59E0B' : '#334155', fontSize: '1.2rem' }}>★</span>
-                  ))}
+          </div>
+          <div className={styles.featuredGrid}>
+            {products.filter(p => p.stock > 0).sort((a,b) => b.rating - a.rating).slice(0,3).map(product => (
+              <div key={product.id} className={`${styles.featuredCard} glass-card`}>
+                <div className={styles.featuredBadge}>⭐ Bestseller</div>
+                <div className={styles.featuredImageWrapper}>
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    style={{ objectFit: 'cover' }}
+                  />
                 </div>
-                <p className={styles.reviewComment} style={{ color: '#F8FAFC', marginTop: '12px' }}>"{review.comment}"</p>
-                <div className={styles.reviewAuthorRow} style={{ borderTopColor: 'rgba(255,255,255,0.05)', marginTop: '20px' }}>
-                  <div className={styles.reviewAvatar} style={{ background: 'rgba(16,185,129,0.2)', color: '#10B981' }}>
-                    {review.authorName.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className={styles.reviewAuthorName} style={{ color: '#F8FAFC' }}>{review.authorName}</div>
-                    <div className={styles.reviewDate}>
-                      {new Date(review.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </div>
+                <div className={styles.featuredContent}>
+                  <span className={styles.productCategory}>{product.category}</span>
+                  <h3 className={styles.featuredName}>{product.name}</h3>
+                  <div className={styles.featuredFooter}>
+                    <span className={styles.productPrice}>{formatPrice(product.price)}</span>
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      className={`${styles.addToCartBtn}`}
+                    >
+                      🛍️ Ajouter
+                    </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Barre de recherche, filtres, tri */}
+      <section className={styles.controlsSection}>
+        {/* Recherche */}
+        <div className={styles.searchWrapper}>
+          <span className={styles.searchIcon}>🔍</span>
+          <input
+            type="text"
+            placeholder="Rechercher un produit…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={styles.searchInput}
+            id="search-products"
+          />
+          {search && (
+            <button
+              className={styles.searchClearBtn}
+              onClick={() => setSearch('')}
+              aria-label="Effacer la recherche"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Catégories + Tri */}
+        <div className={styles.filtersRow}>
+          <div className={styles.categoriesRow}>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`${styles.categoryButton} ${
+                  selectedCategory === cat ? styles.categoryButtonActive : ''
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className={styles.sortSelect}
+          >
+            <option value="default">Trier par…</option>
+            <option value="price-asc">Prix croissant</option>
+            <option value="price-desc">Prix décroissant</option>
+            <option value="rating">Mieux notés</option>
+          </select>
         </div>
       </section>
 
+      {/* Résultats */}
+      {loading ? (
+        <div className={styles.loadingWrapper}>
+          <div className="loading-spinner" />
+          <p style={{ color: 'var(--text-muted)', marginTop: '12px' }}>
+            Chargement des collections…
+          </p>
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className={styles.emptyState}>
+          <span className={styles.emptyStateIcon}>🔍</span>
+          <h3>Aucun produit trouvé</h3>
+          <p>Essayez d'autres mots-clés ou catégories.</p>
+          <button
+            onClick={() => { setSearch(''); setSelectedCategory('Tous'); }}
+            className={`${styles.resetBtn} gradient-button`}
+          >
+            Réinitialiser les filtres
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className={styles.resultsCount}>
+            {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
+          </div>
+          <section className={styles.gridSection}>
+            {filteredProducts.map((product) => (
+              <div key={product.id} className={`${styles.productCard} glass-card`}>
+                {/* Badge rupture */}
+                {product.stock <= 0 && (
+                  <div className={styles.outOfStockBanner}>Rupture de stock</div>
+                )}
+                {/* Badge stock faible */}
+                {product.stock > 0 && product.stock <= 5 && (
+                  <div className={styles.lowStockBanner}>Plus que {product.stock} restant{product.stock > 1 ? 's' : ''} !</div>
+                )}
+
+                {/* Image cliquable vers page produit */}
+                <Link href={`/products/${product.id}`} className={styles.imageWrapper} style={{ display: 'block' }}>
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    style={{ objectFit: 'cover' }}
+                    className={`${styles.productImage} ${product.stock <= 0 ? styles.imageGrayscale : ''}`}
+                  />
+                </Link>
+
+                {/* Contenu */}
+                <div className={styles.cardContent}>
+                  <span className={styles.productCategory}>{product.category}</span>
+                  <Link href={`/products/${product.id}`} style={{ textDecoration: 'none' }}>
+                    <h3 className={styles.productName}>{product.name}</h3>
+                  </Link>
+                  <p className={styles.productDesc}>{product.description}</p>
+
+                  <div className={styles.ratingRow}>
+                    <span className={styles.star}>★</span>
+                    <span className={styles.ratingVal}>{product.rating}</span>
+                    <span className={styles.stockInfo}>
+                      {product.stock > 0 ? `${product.stock} en stock` : 'Épuisé'}
+                    </span>
+                  </div>
+
+                  <div className={styles.footerRow}>
+                    <span className={styles.productPrice}>{formatPrice(product.price)}</span>
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={product.stock <= 0}
+                      className={`${styles.addToCartBtn} ${product.stock <= 0 ? styles.addToCartBtnDisabled : ''}`}
+                    >
+                      {product.stock <= 0 ? 'Épuisé' : '🛍️ Ajouter'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+        </>
+      )}
     </div>
   );
 }

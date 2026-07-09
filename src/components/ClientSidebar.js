@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useCart } from '../context/CartContext';
 import { jsPDF } from 'jspdf';
+import { formatPrice } from '../utils/formatPrice';
 import styles from './ClientSidebar.module.css';
 
 export default function ClientSidebar() {
@@ -94,14 +95,6 @@ export default function ClientSidebar() {
     }
   };
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price).replace('XOF', 'FCFA');
-  };
 
   // PDF Generation (copied from page.js logic for consistency)
   const generateInvoicePDF = (order) => {
@@ -146,13 +139,12 @@ export default function ClientSidebar() {
     doc.text('Mode de Paiement :', 110, 63);
     
     doc.setFont('helvetica', 'normal');
-    const payment = order.payment || {};
-    doc.text(payment.reference || 'N/A', 150, 52);
+    doc.text(order.payment.reference || 'N/A', 150, 52);
     doc.text(new Date(order.date).toLocaleDateString('fr-FR'), 150, 58);
     
-    const paymentLabel = payment.method === 'momo'
-      ? `Mobile Money (${(payment.provider || '').toUpperCase()})`
-      : payment.method === 'direct_transfer'
+    const paymentLabel = order.payment.method === 'momo'
+      ? `Mobile Money (${order.payment.provider.toUpperCase()})`
+      : order.payment.method === 'direct_transfer'
       ? 'Transfert Mobile Money Direct'
       : 'Carte Bancaire';
     doc.text(paymentLabel, 150, 63);
@@ -163,11 +155,10 @@ export default function ClientSidebar() {
     doc.setFont('helvetica', 'bold');
     doc.text('Facturé à :', 20, 85);
     doc.setFont('helvetica', 'normal');
-    const customer = order.customer || {};
-    doc.text(`${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'N/A', 20, 91);
-    doc.text(customer.email || 'N/A', 20, 96);
-    doc.text(customer.phone || 'N/A', 20, 101);
-    doc.text(`${customer.address || ''}, ${customer.city || ''}`.replace(/^, |, $/, '') || 'N/A', 20, 106);
+    doc.text(`${order.customer.firstName} ${order.customer.lastName}`, 20, 91);
+    doc.text(order.customer.email, 20, 96);
+    doc.text(order.customer.phone, 20, 101);
+    doc.text(`${order.customer.address}, ${order.customer.city}`, 20, 106);
 
     // Tampon vert PAYÉ
     doc.setDrawColor(16, 185, 129);
@@ -192,7 +183,7 @@ export default function ClientSidebar() {
     let yOffset = 129;
     doc.setFont('helvetica', 'normal');
     
-    (order.items || []).forEach((item) => {
+    order.items.forEach((item) => {
       const itemName = item.name.length > 40 ? item.name.slice(0, 38) + '...' : item.name;
       doc.text(itemName, 22, yOffset);
       doc.text(item.quantity.toString(), 122, yOffset);
@@ -383,22 +374,18 @@ export default function ClientSidebar() {
                 </div>
               ) : (
                 <div className={styles.ordersList}>
-                  {customerOrders
-                    .filter((order) => order && order.payment)
-                    .map((order) => (
-                    <div key={order.id || Math.random()} className={styles.orderCard}>
+                  {customerOrders.map((order) => (
+                    <div key={order.id} className={styles.orderCard}>
                       <div className={styles.orderCardHeader}>
-                        <span className={styles.orderRef}>{order.payment?.reference || 'N/A'}</span>
+                        <span className={styles.orderRef}>{order.payment.reference}</span>
                         <span className={styles.orderStatusBadge}>
                           {order.status === 'delivered' ? 'Livré' : 'En cours'}
                         </span>
                       </div>
                       <div className={styles.orderCardBody}>
                         <div className={styles.orderDetailRow}>
-                          <span className={styles.orderDate}>
-                            {order.date ? new Date(order.date).toLocaleDateString('fr-FR') : 'N/A'}
-                          </span>
-                          <span className={styles.orderPrice}>{formatPrice(order.total || 0)}</span>
+                          <span className={styles.orderDate}>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
+                          <span className={styles.orderPrice}>{formatPrice(order.total)}</span>
                         </div>
                         <button
                           onClick={() => generateInvoicePDF(order)}

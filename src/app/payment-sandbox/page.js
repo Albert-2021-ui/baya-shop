@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { formatPrice } from '../../utils/formatPrice';
 import styles from './page.module.css';
 
 // Le composant interne qui utilise useSearchParams
@@ -26,18 +27,17 @@ function SandboxContent() {
 
   useEffect(() => {
     setMounted(true);
+    // Guard: if no pending order, redirect home
+    if (!localStorage.getItem('pending_checkout_order')) {
+      // Only redirect if there's no amount in URL (direct access)
+      if (!searchParams.get('amount')) {
+        router.replace('/');
+      }
+    }
   }, []);
 
   if (!mounted) return null;
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price).replace('XOF', 'FCFA');
-  };
 
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
@@ -72,7 +72,7 @@ function SandboxContent() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ orderData: orderPayload })
+          body: JSON.stringify(orderPayload)
         });
 
         if (res.ok) {
@@ -81,13 +81,20 @@ function SandboxContent() {
           // Sauvegarder dans localStorage pour la page success
           localStorage.setItem('last_completed_order', JSON.stringify(result.order));
           
-          // Sauvegarder également dans l'historique local de commandes du client
+          // Update the existing pending order in history (set by checkout page)
           let clientHistory = [];
           const savedHistory = localStorage.getItem('baya_customer_orders_history');
           if (savedHistory) {
             try { clientHistory = JSON.parse(savedHistory); } catch(e) {}
           }
-          clientHistory.push(result.order);
+          const existingIdx = clientHistory.findIndex(o => o.id === reference || o.payment?.reference === reference);
+          if (existingIdx !== -1) {
+            // Update the existing entry with final payment details
+            clientHistory[existingIdx] = { ...clientHistory[existingIdx], ...result.order };
+          } else {
+            // Fallback: add if not found
+            clientHistory.push(result.order);
+          }
           localStorage.setItem('baya_customer_orders_history', JSON.stringify(clientHistory));
           
           // Nettoyer les commandes en attente

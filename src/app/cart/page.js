@@ -3,53 +3,68 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useCart } from '../../context/CartContext';
+import { formatPrice } from '../../utils/formatPrice';
 import styles from './page.module.css';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity,getCartTotal, isLoaded } = useCart();
+  const { cart, removeFromCart, updateQuantity, getCartTotal, clearCart, isLoaded } = useCart();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // ── Promo codes ──
+  const PROMO_CODES = {
+    'BAYA10':     { label: '-10%',  discount: 0.10 },
+    'BIENVENUE':  { label: '-15%',  discount: 0.15 },
+    'VIP20':      { label: '-20%',  discount: 0.20 },
+  };
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState('');
+
+  const handleApplyPromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (PROMO_CODES[code]) {
+      setAppliedPromo({ code, ...PROMO_CODES[code] });
+      setPromoError('');
+    } else {
+      setPromoError('Code promo invalide ou expiré.');
+      setAppliedPromo(null);
+    }
+  };
+
+  useEffect(() => { setMounted(true); }, []);
 
   if (!mounted || !isLoaded) {
     return (
       <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
-        <div className="loading-spinner" style={{ margin: '0 auto 16px auto' }}></div>
-        <p style={{ color: 'var(--text-secondary)' }}>Chargement de votre panier...</p>
+        <div className="loading-spinner" style={{ margin: '0 auto 16px auto' }} />
+        <p style={{ color: 'var(--text-muted)' }}>Chargement de votre panier...</p>
       </div>
     );
   }
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price).replace('XOF', 'FCFA');
-  };
-
   const subtotal = getCartTotal();
-  // Livraison gratuite à partir de 150 000 FCFA, sinon 2 000 FCFA
-  const shippingFee = subtotal >= 150000 || subtotal === 0 ? 0 : 2000;
-  const total = subtotal + shippingFee;
+  const discountAmount = appliedPromo ? Math.round(subtotal * appliedPromo.discount) : 0;
+  const discountedSubtotal = subtotal - discountAmount;
+  const shippingFee = discountedSubtotal >= 150000 || discountedSubtotal === 0 ? 0 : 2000;
+  const total = discountedSubtotal + shippingFee;
+  const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   if (cart.length === 0) {
     return (
       <div className="container">
         <div className={styles.emptyCart}>
-          <span style={{ fontSize: '4rem' }}>🛒</span>
-          <h2 className={styles.emptyCartText}>Votre panier est actuellement vide</h2>
-          
-          <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '-10px 0 10px 0' }}>
-            Explorez notre sélection de produits exclusifs pour commencer vos achats.
+          <span className={styles.emptyCartIcon}>🛒</span>
+          <h2 className={styles.emptyCartText}>Votre panier est vide</h2>
+          <p className={styles.emptyCartSub}>
+            Explorez nos collections pour trouver votre bonheur !
           </p>
           <Link href="/">
-            <button className={styles.continueShoppingBtn}>Retourner à l'accueil</button>
+            <button className={`${styles.continueShoppingBtn} gradient-button`}>
+              Découvrir les produits
+            </button>
           </Link>
         </div>
       </div>
@@ -57,102 +72,160 @@ export default function CartPage() {
   }
 
   return (
-    <div className="container">
+    <div className="container" style={{ paddingBottom: '60px' }}>
+      {/* Header */}
       <div className={styles.cartHeader}>
-        <h1 className={styles.cartTitle}>Votre Panier</h1>
-        <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Vous avez {cart.reduce((acc, item) => acc + item.quantity, 0)} article(s) dans votre panier
-        </p>
+        <div>
+          <h1 className={styles.cartTitle}>Mon Panier</h1>
+          <p className={styles.cartSubtitle}>
+            {totalItems} article{totalItems > 1 ? 's' : ''} sélectionné{totalItems > 1 ? 's' : ''}
+          </p>
+        </div>
+        <button onClick={clearCart} className={styles.clearCartBtn}>
+          🗑️ Vider le panier
+        </button>
       </div>
 
       <div className={styles.cartLayout}>
-        {/* Liste des articles */}
+        {/* Articles */}
         <div className={styles.cartItemsList}>
           {cart.map((item) => (
-            <div key={item.id}  className={`${styles.cartItem} glass-card`}>
+            <div key={item.id} className={`${styles.cartItem} glass-card`}>
+              {/* Image */}
               <div className={styles.itemImageWrapper}>
-                <img src={item.image} alt={item.name} className={styles.itemImage} />
+                <Image
+                  src={item.image}
+                  alt={item.name}
+                  fill
+                  unoptimized
+                  sizes="80px"
+                  style={{ objectFit: 'cover', borderRadius: '10px' }}
+                />
               </div>
 
+              {/* Détails */}
               <div className={styles.itemDetails}>
                 <span className={styles.itemCategory}>{item.category}</span>
                 <h3 className={styles.itemName}>{item.name}</h3>
-                <span className={styles.itemPrice}>{formatPrice(item.price)} / unité</span>
+                <span className={styles.itemUnitPrice}>{formatPrice(item.price)} / unité</span>
               </div>
 
+              {/* Quantité */}
               <div className={styles.quantityControls}>
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   className={styles.qtyBtn}
+                  aria-label="Diminuer"
                 >
-                  -
+                  −
                 </button>
                 <span className={styles.qtyVal}>{item.quantity}</span>
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   className={styles.qtyBtn}
+                  aria-label="Augmenter"
                 >
                   +
                 </button>
               </div>
 
+              {/* Total ligne */}
               <div className={styles.itemTotal}>{formatPrice(item.price * item.quantity)}</div>
 
+              {/* Supprimer */}
               <button
                 onClick={() => removeFromCart(item.id)}
                 className={styles.removeBtn}
-                title="Supprimer l'article"
+                aria-label={`Supprimer ${item.name}`}
+                title="Supprimer du panier"
               >
-                🗑️
-              </button> 
-               </div> 
-            ))};
-           </div> 
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
 
-
-        {/* Résumé de la commande */}
+        {/* Résumé */}
         <div className={`${styles.summaryCard} glass-card`}>
-          <h2 className={styles.summaryTitle}>Résumé de la commande</h2>
-          
+          <h2 className={styles.summaryTitle}>Résumé de commande</h2>
+
           <div className={styles.summaryRow}>
-            <span>Sous-total</span>
+            <span>Sous-total ({totalItems} art.)</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
 
+          {/* Promo code block */}
+          <div className={styles.promoBlock}>
+            <div className={styles.promoInputRow}>
+              <input
+                type="text"
+                placeholder="Code promo"
+                value={promoInput}
+                onChange={e => { setPromoInput(e.target.value); setPromoError(''); }}
+                className={styles.promoInput}
+                onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
+                id="promo-code-input"
+              />
+              <button onClick={handleApplyPromo} className={styles.promoBtn} id="apply-promo-btn">
+                Appliquer
+              </button>
+            </div>
+            {promoError && <p className={styles.promoError}>{promoError}</p>}
+            {appliedPromo && (
+              <div className={styles.promoSuccess}>
+                <span>🎉 Code <strong>{appliedPromo.code}</strong> appliqué ({appliedPromo.label}) !</span>
+                <button onClick={() => { setAppliedPromo(null); setPromoInput(''); }} className={styles.promoRemove}>✕</button>
+              </div>
+            )}
+          </div>
+
+          {appliedPromo && (
+            <div className={styles.summaryRow} style={{ color: 'var(--success)' }}>
+              <span>Remise ({appliedPromo.label})</span>
+              <span>− {formatPrice(discountAmount)}</span>
+            </div>
+          )}
+
           <div className={styles.summaryRow}>
-            <span>Frais de livraison</span>
+            <span>Livraison</span>
             <span>
               {shippingFee === 0 ? (
-                <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>Gratuit</span>
+                <span className={styles.freeShipping}>✓ Gratuite</span>
               ) : (
                 formatPrice(shippingFee)
               )}
             </span>
           </div>
-          
+
           {shippingFee > 0 && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-12px' }}>
-              Livraison gratuite à partir de {formatPrice(150000)} d'achats !
-            </p>
+            <div className={styles.freeShippingHint}>
+              🎁 Plus que {formatPrice(150000 - discountedSubtotal)} pour la livraison gratuite !
+            </div>
           )}
 
           <div className={styles.totalRow}>
-            <span>Total</span>
-            <span style={{ color: 'var(--primary)' }}>{formatPrice(total)}</span>
+            <span>Total TTC</span>
+            <span className={styles.totalAmount}>{formatPrice(total)}</span>
           </div>
 
           <button
             onClick={() => router.push('/checkout')}
-            className="gradient-button checkoutBtn"
+            className={`${styles.checkoutBtn} gradient-button`}
+            id="proceed-to-checkout"
           >
-            Procéder au paiement
+            Passer la commande →
           </button>
 
-          <Link href="/" style={{ textAlign: 'center', fontSize: '0.875rem' }}>
-            <span style={{ color: 'var(--text-secondary)', cursor: 'pointer' }} className="hover-underline">
-              ← Continuer mes achats
-            </span>
+          <Link href="/" className={styles.continueShopping}>
+            ← Continuer mes achats
           </Link>
+
+          {/* Badges de sécurité */}
+          <div className={styles.securityBadges}>
+            <span>🔒 Paiement sécurisé</span>
+            <span>📦 Livraison rapide</span>
+            <span>✅ Satisfait ou remboursé</span>
+          </div>
         </div>
       </div>
     </div>
