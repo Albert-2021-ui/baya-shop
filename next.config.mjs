@@ -20,8 +20,7 @@ const nextConfig = {
   // Ne pas bloquer le build si TypeScript a des erreurs (projet JS)
   typescript: {
     ignoreBuildErrors: true,
-  },
-};
+  }
+}
 
 export default nextConfig;
-
