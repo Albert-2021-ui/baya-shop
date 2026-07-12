@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
+  // Accepte plusieurs noms de variables possibles
+  const resendApiKey =
+    process.env.RESEND_API_KEY ||
+    process.env.RESEND_KEY ||
+    process.env.RESEND_API;
+
+  const webhookUrl =
+    process.env.GMAIL_WEBHOOK_URL ||
+    process.env.GMAIL_WEBHOOK_API_KEY ||
+    process.env.WEBHOOK_URL ||
+    process.env.GMAIL_WEBHOOK;
+
   const fromAddress = process.env.RESEND_FROM || 'BAYA SHOP <onboarding@resend.dev>';
   const testTo = process.env.CONTACT_EMAIL || 'eugenebaya6@gmail.com';
 

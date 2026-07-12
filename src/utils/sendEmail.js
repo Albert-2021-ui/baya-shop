@@ -10,8 +10,18 @@ const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json
  * @returns {Promise<{success: boolean, status: string, error?: string}>}
  */
 async function sendViaResendOrWebhook({ to, subject, html, replyTo, attachments }) {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
+  // Accepte plusieurs noms de variables possibles
+  const resendApiKey =
+    process.env.RESEND_API_KEY ||
+    process.env.RESEND_KEY ||
+    process.env.RESEND_API;
+
+  const webhookUrl =
+    process.env.GMAIL_WEBHOOK_URL ||
+    process.env.GMAIL_WEBHOOK_API_KEY ||
+    process.env.WEBHOOK_URL ||
+    process.env.GMAIL_WEBHOOK;
+
   const fromAddress = process.env.RESEND_FROM || process.env.SMTP_FROM || 'BAYA SHOP <onboarding@resend.dev>';
 
   // ── Méthode 1 : Resend API via fetch natif (sans SDK) ──
