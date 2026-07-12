@@ -23,14 +23,14 @@ export async function GET() {
 
   const transportConfig = {
     host: resolvedHost,
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
+    port: 465, // On force le port 465 (SSL)
+    secure: true, // Requis pour le port 465
     auth: { user, pass },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
     tls: { 
-      servername: host, // Requis car on utilise l'IP brute au lieu du nom de domaine
+      servername: host, 
       rejectUnauthorized: false 
     }
   };
