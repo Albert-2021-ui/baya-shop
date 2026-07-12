@@ -37,7 +37,7 @@
     "category": "Électronique",
     "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80",
     "rating": 4.6,
-    "stock": 21
+    "stock": 20
   },
   {
     "id": 5,
@@ -57,7 +57,7 @@
     "category": "Mode & Accessoires",
     "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
     "rating": 4.7,
-    "stock": 5
+    "stock": 3
   },
   {
     "id": 7,
