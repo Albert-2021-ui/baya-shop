@@ -1,11 +1,8 @@
 import nodemailer from 'nodemailer';
 import fs from 'fs/promises';
 import path from 'path';
-import dns from 'dns';
+import dns from 'dns/promises';
 import { generateInvoicePDF } from './generateInvoicePDF';
-
-// Forcer Node.js à utiliser l'IPv4 en priorité (contourne le bug IPv6 ENETUNREACH sur Railway)
-dns.setDefaultResultOrder('ipv4first');
 
 const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json');
 
@@ -156,8 +153,17 @@ export async function sendConfirmationEmail(order) {
 
     if (hasSmtpConfig) {
       try {
+        const hostName = process.env.SMTP_HOST || 'smtp.gmail.com';
+        let resolvedHost = hostName;
+        try {
+          const lookupResult = await dns.lookup(hostName, { family: 4 });
+          resolvedHost = lookupResult.address;
+        } catch (err) {
+          console.error(`Failed to resolve ${hostName} to IPv4:`, err);
+        }
+
         const transportConfig = {
-          host: process.env.SMTP_HOST,
+          host: resolvedHost,
           port: parseInt(process.env.SMTP_PORT) || 587,
           secure: process.env.SMTP_SECURE === 'true',
           auth: {
@@ -167,8 +173,8 @@ export async function sendConfirmationEmail(order) {
           connectionTimeout: 10000,
           greetingTimeout: 10000,
           socketTimeout: 15000,
-          family: 4, // ⚠️ FORCE IPv4 - Railway ne supporte pas IPv6 en sortie
           tls: {
+            servername: hostName,
             rejectUnauthorized: false
           }
         };
@@ -333,8 +339,17 @@ export async function sendContactEmail(formData) {
 
     if (hasSmtpConfig) {
       try {
+        const hostName = process.env.SMTP_HOST || 'smtp.gmail.com';
+        let resolvedHost = hostName;
+        try {
+          const lookupResult = await dns.lookup(hostName, { family: 4 });
+          resolvedHost = lookupResult.address;
+        } catch (err) {
+          console.error(`Failed to resolve ${hostName} to IPv4:`, err);
+        }
+
         const transportConfig = {
-          host: process.env.SMTP_HOST,
+          host: resolvedHost,
           port: parseInt(process.env.SMTP_PORT) || 587,
           secure: process.env.SMTP_SECURE === 'true',
           auth: {
@@ -344,8 +359,8 @@ export async function sendContactEmail(formData) {
           connectionTimeout: 10000,
           greetingTimeout: 10000,
           socketTimeout: 15000,
-          family: 4, // ⚠️ FORCE IPv4
           tls: {
+            servername: hostName,
             rejectUnauthorized: false
           }
         };

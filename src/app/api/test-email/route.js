@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import dns from 'dns';
-
-// Forcer Node.js à utiliser l'IPv4 en priorité
-dns.setDefaultResultOrder('ipv4first');
+import dns from 'dns/promises';
 
 export async function GET() {
-  const host = process.env.SMTP_HOST;
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
@@ -14,16 +11,28 @@ export async function GET() {
     return NextResponse.json({ error: 'Variables SMTP manquantes' });
   }
 
+  // Résoudre manuellement l'adresse IPv4 pour éviter le bug IPv6 (ENETUNREACH) sur Railway
+  let resolvedHost = host;
+  try {
+    const lookupResult = await dns.lookup(host, { family: 4 });
+    resolvedHost = lookupResult.address;
+    console.log(`Resolved ${host} to IPv4: ${resolvedHost}`);
+  } catch (err) {
+    console.error(`Failed to resolve ${host} to IPv4:`, err);
+  }
+
   const transportConfig = {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: resolvedHost,
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
     auth: { user, pass },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
-    family: 4, // ⚠️ FORCE IPv4
-    tls: { rejectUnauthorized: false }
+    tls: { 
+      servername: host, // Requis car on utilise l'IP brute au lieu du nom de domaine
+      rejectUnauthorized: false 
+    }
   };
 
   try {
