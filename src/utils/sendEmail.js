@@ -244,9 +244,13 @@ export async function sendConfirmationEmail(order) {
       attachmentName: `Facture_${orderRef}.pdf`
     };
 
-    loggedEmails.push(emailLogEntry);
-    await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
-    console.log(`E-mail loggé localement dans : src/data/sent_emails.json`);
+    try {
+      loggedEmails.push(emailLogEntry);
+      await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
+      console.log(`E-mail loggé localement dans : src/data/sent_emails.json`);
+    } catch(err) {
+      console.warn('Impossible de logger l\'e-mail localement (environnement en lecture seule ?)', err.message);
+    }
 
     return {
       success: true,
@@ -401,8 +405,12 @@ export async function sendContactEmail(formData) {
       htmlBody: emailHtml
     };
 
-    loggedEmails.push(emailLogEntry);
-    await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
+    try {
+      loggedEmails.push(emailLogEntry);
+      await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
+    } catch(err) {
+      console.warn('Impossible de logger le contact localement', err.message);
+    }
 
     return {
       success: true,
