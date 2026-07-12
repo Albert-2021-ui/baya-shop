@@ -1,7 +1,11 @@
 import nodemailer from 'nodemailer';
 import fs from 'fs/promises';
 import path from 'path';
+import dns from 'dns';
 import { generateInvoicePDF } from './generateInvoicePDF';
+
+// Forcer Node.js à utiliser l'IPv4 en priorité (contourne le bug IPv6 ENETUNREACH sur Railway)
+dns.setDefaultResultOrder('ipv4first');
 
 const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json');
 

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Forcer Node.js à utiliser l'IPv4 en priorité
+dns.setDefaultResultOrder('ipv4first');
 
 export async function GET() {
   const host = process.env.SMTP_HOST;
