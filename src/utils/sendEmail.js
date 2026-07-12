@@ -145,13 +145,37 @@ export async function sendConfirmationEmail(order) {
     // 1.5 Générer le PDF de la facture
     const pdfBuffer = await generateInvoicePDF(order);
 
-    // 2. Tenter d'envoyer l'e-mail avec Nodemailer (si variables d'environnement définies)
+    const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
     const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
     
     let sentInfo = null;
     let emailStatus = 'logged_locally';
 
-    if (hasSmtpConfig) {
+    if (webhookUrl) {
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' }, // Avoid CORS preflight on Apps Script
+          body: JSON.stringify({
+            to: customerEmail,
+            subject: emailSubject,
+            html: emailHtml,
+            pdfBase64: pdfBuffer.toString('base64'),
+            pdfName: `Facture_${orderRef}.pdf`
+          })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          emailStatus = 'sent_via_webhook';
+          console.log(`E-mail envoyé avec succès via Webhook à ${customerEmail}`);
+        } else {
+          throw new Error(result.error || 'Erreur inconnue du Webhook');
+        }
+      } catch (webhookErr) {
+        console.error('Échec de l\'envoi via Webhook, enregistrement en local...', webhookErr);
+      }
+    } else if (hasSmtpConfig) {
       try {
         const hostName = process.env.SMTP_HOST || 'smtp.gmail.com';
         let resolvedHost = hostName;
@@ -258,7 +282,7 @@ export async function sendConfirmationEmail(order) {
     return {
       success: true,
       status: emailStatus,
-      message: emailStatus === 'sent_via_smtp' ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP non configuré).'
+      message: (emailStatus === 'sent_via_smtp' || emailStatus === 'sent_via_webhook') ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP/Webhook non configuré).'
     };
 
   } catch (error) {
@@ -333,11 +357,35 @@ export async function sendContactEmail(formData) {
       </html>
     `;
 
+    const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
     const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
     let sentInfo = null;
     let emailStatus = 'logged_locally';
 
-    if (hasSmtpConfig) {
+    if (webhookUrl) {
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            to: recipientEmail,
+            replyTo: email,
+            subject: emailSubject,
+            html: emailHtml
+          })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          emailStatus = 'sent_via_webhook';
+          console.log(`E-mail de contact envoyé avec succès via Webhook à ${recipientEmail}`);
+        } else {
+          throw new Error(result.error || 'Erreur inconnue du Webhook');
+        }
+      } catch (webhookErr) {
+        console.error('Échec de l\'envoi via Webhook, enregistrement en local...', webhookErr);
+      }
+    } else if (hasSmtpConfig) {
       try {
         const hostName = process.env.SMTP_HOST || 'smtp.gmail.com';
         let resolvedHost = hostName;
@@ -421,7 +469,7 @@ export async function sendContactEmail(formData) {
     return {
       success: true,
       status: emailStatus,
-      message: emailStatus === 'sent_via_smtp' ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP non configuré).'
+      message: (emailStatus === 'sent_via_smtp' || emailStatus === 'sent_via_webhook') ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP/Webhook non configuré).'
     };
   } catch (error) {
     console.error('Erreur dans l\'utilitaire d\'envoi d\'e-mail de contact:', error);
