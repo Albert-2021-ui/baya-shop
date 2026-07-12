@@ -402,3 +402,43 @@
   .navLinks  { display: none; }
   .mobileRight { display: flex; }
 }
+
+.wishlistBadge {
+  font-size: 0.68rem;
+  height: 17px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #E11D48;
+  color: white;
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.5);
+  animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.langToggleBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  margin-left: 8px;
+}
+
+.langToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}

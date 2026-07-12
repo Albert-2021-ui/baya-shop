@@ -665,3 +665,28 @@
   border-top: 1px solid var(--bg-tertiary);
 }
 
+.wishlistBtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s ease;
+}
+
+.wishlistBtn:hover {
+  transform: scale(1.1);
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+

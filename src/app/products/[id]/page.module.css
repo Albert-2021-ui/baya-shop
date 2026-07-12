@@ -393,3 +393,29 @@
   .addBtn { min-width: 0; width: 100%; }
   .ctaRow { flex-direction: column; }
 }
+
+.wishlistBtn {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wishlistBtn:hover {
+  transform: translateY(-2px);
+  background: var(--bg-tertiary);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.wishlistActive {
+  background: rgba(225, 29, 72, 0.05) !important;
+  border-color: rgba(225, 29, 72, 0.3) !important;
+}

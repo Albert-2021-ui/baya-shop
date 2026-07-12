@@ -7,7 +7,7 @@
     "category": "Électronique",
     "image": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&auto=format&fit=crop&q=80",
     "rating": 4.9,
-    "stock": 12
+    "stock": 0
   },
   {
     "id": 2,
@@ -17,7 +17,7 @@
     "category": "Électronique",
     "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80",
     "rating": 4.8,
-    "stock": 16
+    "stock": 3
   },
   {
     "id": 3,
@@ -37,7 +37,7 @@
     "category": "Électronique",
     "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80",
     "rating": 4.6,
-    "stock": 22
+    "stock": 21
   },
   {
     "id": 5,
@@ -57,7 +57,7 @@
     "category": "Mode & Accessoires",
     "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
     "rating": 4.7,
-    "stock": 7
+    "stock": 5
   },
   {
     "id": 7,
@@ -67,7 +67,7 @@
     "category": "Électroménager",
     "image": "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80",
     "rating": 4.8,
-    "stock": 4
+    "stock": 0
   },
   {
     "id": 8,

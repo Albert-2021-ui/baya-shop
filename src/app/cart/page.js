@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useCart } from '../../context/CartContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import { formatPrice } from '../../utils/formatPrice';
 import styles from './page.module.css';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, getCartTotal, clearCart, isLoaded } = useCart();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
@@ -29,7 +31,7 @@ export default function CartPage() {
       setAppliedPromo({ code, ...PROMO_CODES[code] });
       setPromoError('');
     } else {
-      setPromoError('Code promo invalide ou expiré.');
+      setPromoError(t.promoInvalid || 'Code promo invalide ou expiré.');
       setAppliedPromo(null);
     }
   };
@@ -40,7 +42,7 @@ export default function CartPage() {
     return (
       <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
         <div className="loading-spinner" style={{ margin: '0 auto 16px auto' }} />
-        <p style={{ color: 'var(--text-muted)' }}>Chargement de votre panier...</p>
+        <p style={{ color: 'var(--text-muted)' }}>{t.loading || 'Chargement...'}</p>
       </div>
     );
   }
@@ -57,13 +59,13 @@ export default function CartPage() {
       <div className="container">
         <div className={styles.emptyCart}>
           <span className={styles.emptyCartIcon}>🛒</span>
-          <h2 className={styles.emptyCartText}>Votre panier est vide</h2>
+          <h2 className={styles.emptyCartText}>{t.emptyCart || 'Votre panier est vide'}</h2>
           <p className={styles.emptyCartSub}>
-            Explorez nos collections pour trouver votre bonheur !
+            {t.noProductsSub || 'Explorez nos collections pour trouver votre bonheur !'}
           </p>
           <Link href="/">
             <button className={`${styles.continueShoppingBtn} gradient-button`}>
-              Découvrir les produits
+              {t.discoverProducts || 'Découvrir nos produits'}
             </button>
           </Link>
         </div>
@@ -76,13 +78,13 @@ export default function CartPage() {
       {/* Header */}
       <div className={styles.cartHeader}>
         <div>
-          <h1 className={styles.cartTitle}>Mon Panier</h1>
+          <h1 className={styles.cartTitle}>{t.cartPage || 'Mon Panier'}</h1>
           <p className={styles.cartSubtitle}>
-            {totalItems} article{totalItems > 1 ? 's' : ''} sélectionné{totalItems > 1 ? 's' : ''}
+            {totalItems} {totalItems > 1 ? (t.itemsSelected || 'articles sélectionnés') : (t.itemSelected || 'article sélectionné')}
           </p>
         </div>
         <button onClick={clearCart} className={styles.clearCartBtn}>
-          🗑️ Vider le panier
+          {t.clearCart || '🗑️ Vider le panier'}
         </button>
       </div>
 
@@ -107,7 +109,7 @@ export default function CartPage() {
               <div className={styles.itemDetails}>
                 <span className={styles.itemCategory}>{item.category}</span>
                 <h3 className={styles.itemName}>{item.name}</h3>
-                <span className={styles.itemUnitPrice}>{formatPrice(item.price)} / unité</span>
+                <span className={styles.itemUnitPrice}>{formatPrice(item.price)} / {t.unitPrice || 'unité'}</span>
               </div>
 
               {/* Quantité */}
@@ -147,10 +149,10 @@ export default function CartPage() {
 
         {/* Résumé */}
         <div className={`${styles.summaryCard} glass-card`}>
-          <h2 className={styles.summaryTitle}>Résumé de commande</h2>
+          <h2 className={styles.summaryTitle}>{t.yourOrderSummary || 'Résumé de commande'}</h2>
 
           <div className={styles.summaryRow}>
-            <span>Sous-total ({totalItems} art.)</span>
+            <span>{t.subtotal || 'Sous-total'} ({totalItems} {totalItems > 1 ? (t.itemsPlural || 'articles') : (t.itemPlural || 'article')})</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
 
@@ -159,7 +161,7 @@ export default function CartPage() {
             <div className={styles.promoInputRow}>
               <input
                 type="text"
-                placeholder="Code promo"
+                placeholder={t.promoPlaceholder || 'Code promo'}
                 value={promoInput}
                 onChange={e => { setPromoInput(e.target.value); setPromoError(''); }}
                 className={styles.promoInput}
@@ -167,13 +169,17 @@ export default function CartPage() {
                 id="promo-code-input"
               />
               <button onClick={handleApplyPromo} className={styles.promoBtn} id="apply-promo-btn">
-                Appliquer
+                {t.applyPromo || 'Appliquer'}
               </button>
             </div>
             {promoError && <p className={styles.promoError}>{promoError}</p>}
             {appliedPromo && (
               <div className={styles.promoSuccess}>
-                <span>🎉 Code <strong>{appliedPromo.code}</strong> appliqué ({appliedPromo.label}) !</span>
+                <span>
+                  🎉 {(t.promoApplied || 'Code {code} appliqué ({label}) !')
+                    .replace('{code}', appliedPromo.code)
+                    .replace('{label}', appliedPromo.label)}
+                </span>
                 <button onClick={() => { setAppliedPromo(null); setPromoInput(''); }} className={styles.promoRemove}>✕</button>
               </div>
             )}
@@ -181,16 +187,16 @@ export default function CartPage() {
 
           {appliedPromo && (
             <div className={styles.summaryRow} style={{ color: 'var(--success)' }}>
-              <span>Remise ({appliedPromo.label})</span>
+              <span>{t.discount || 'Remise'} ({appliedPromo.label})</span>
               <span>− {formatPrice(discountAmount)}</span>
             </div>
           )}
 
           <div className={styles.summaryRow}>
-            <span>Livraison</span>
+            <span>{t.shipping || 'Livraison'}</span>
             <span>
               {shippingFee === 0 ? (
-                <span className={styles.freeShipping}>✓ Gratuite</span>
+                <span className={styles.freeShipping}>{t.freeShipping || '✓ Gratuite'}</span>
               ) : (
                 formatPrice(shippingFee)
               )}
@@ -199,12 +205,13 @@ export default function CartPage() {
 
           {shippingFee > 0 && (
             <div className={styles.freeShippingHint}>
-              🎁 Plus que {formatPrice(150000 - discountedSubtotal)} pour la livraison gratuite !
+              {(t.freeShippingHint || '🎁 Plus que {amount} pour la livraison gratuite !')
+                .replace('{amount}', formatPrice(150000 - discountedSubtotal))}
             </div>
           )}
 
           <div className={styles.totalRow}>
-            <span>Total TTC</span>
+            <span>{t.checkoutTotal || 'Total TTC'}</span>
             <span className={styles.totalAmount}>{formatPrice(total)}</span>
           </div>
 
@@ -213,18 +220,16 @@ export default function CartPage() {
             className={`${styles.checkoutBtn} gradient-button`}
             id="proceed-to-checkout"
           >
-            Passer la commande →
+            {t.proceedToCheckout || 'Passer la commande →'}
           </button>
 
           <Link href="/" className={styles.continueShopping}>
-            ← Continuer mes achats
+            {t.continueShopping || '← Continuer mes achats'}
           </Link>
 
           {/* Badges de sécurité */}
           <div className={styles.securityBadges}>
-            <span>🔒 Paiement sécurisé</span>
-            <span>📦 Livraison rapide</span>
-            <span>✅ Satisfait ou remboursé</span>
+            {t.securityBadges || '🔒 Paiement sécurisé  ·  📦 Livraison rapide  ·  ✅ Satisfait ou remboursé'}
           </div>
         </div>
       </div>

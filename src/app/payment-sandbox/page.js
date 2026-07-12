@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useCart } from '../../context/CartContext';
 import { formatPrice } from '../../utils/formatPrice';
 import styles from './page.module.css';
 
@@ -9,6 +10,7 @@ import styles from './page.module.css';
 function SandboxContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { clearCart } = useCart();
   
   // Paramètres URL
   const gateway = searchParams.get('gateway') || 'fedapay'; // fedapay ou cinetpay
@@ -97,8 +99,9 @@ function SandboxContent() {
           }
           localStorage.setItem('baya_customer_orders_history', JSON.stringify(clientHistory));
           
-          // Nettoyer les commandes en attente
+          // Nettoyer les commandes en attente et le panier
           localStorage.removeItem('pending_checkout_order');
+          clearCart();
 
           setLoadingMessage('Paiement validé avec succès ! Redirection vers votre reçu...');
           

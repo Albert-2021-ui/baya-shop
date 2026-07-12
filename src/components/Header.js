@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCart } from '../context/CartContext';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
+import { useWishlist } from '../context/WishlistContext';
 import { useState, useEffect } from 'react';
 import styles from './Header.module.css';
 
@@ -11,6 +13,8 @@ export default function Header() {
   const { getCartCount, isLoaded } = useCart();
   const { toggleSidebar, isAdminLoggedIn } = useApp();
   const { user, isAuthLoaded, logout } = useAuth();
+  const { lang, t, setLang } = useTranslation();
+  const { getWishlistCount, isLoaded: isWishlistLoaded } = useWishlist();
 
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +37,7 @@ export default function Header() {
   }, []);
 
   const cartCount = mounted && isLoaded ? getCartCount() : 0;
+  const wishlistCount = mounted && isWishlistLoaded ? getWishlistCount() : 0;
   const isLoggedIn = mounted && isAuthLoaded && !!user;
   const initials = isLoggedIn
     ? `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase()
@@ -51,10 +56,17 @@ export default function Header() {
 
           {/* Desktop Nav */}
           <nav className={styles.navLinks}>
-            <Link href="/" className={styles.navLink}>Accueil</Link>
+            <Link href="/" className={styles.navLink}>{t.home}</Link>
+
+            <Link href="/wishlist" className={styles.navLink} style={{ position: 'relative' }}>
+              ❤️ {t.wishlist}
+              {wishlistCount > 0 && (
+                <span className={styles.wishlistBadge}>{wishlistCount}</span>
+              )}
+            </Link>
 
             <Link href="/cart" className={`${styles.navLink} ${styles.cartNavLink}`}>
-              🛒 Panier
+              🛒 {t.cart}
               {cartCount > 0 && (
                 <span className={styles.cartBadge}>{cartCount}</span>
               )}
@@ -62,7 +74,7 @@ export default function Header() {
 
             {mounted && isAdminLoggedIn && (
               <Link href="/admin" className={`${styles.navLink} ${styles.adminNavLink}`}>
-                ⚙️ Admin
+                ⚙️ {t.admin}
               </Link>
             )}
 
@@ -73,7 +85,7 @@ export default function Header() {
                   className={styles.userAvatarBtn}
                   onClick={() => setUserMenuOpen((v) => !v)}
                   id="user-menu-btn"
-                  aria-label="Menu utilisateur"
+                  aria-label={t.userMenuBtn}
                 >
                   <span className={styles.avatarInitials}>{initials}</span>
                   <span className={styles.userNameShort}>{user.firstName}</span>
@@ -95,28 +107,28 @@ export default function Header() {
                       className={styles.dropItem}
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      🏠 Mon Dashboard
+                      🏠 {t.myDashboard}
                     </Link>
                     <Link
                       href="/dashboard?tab=orders"
                       className={styles.dropItem}
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      📦 Mes Commandes
+                      📦 {t.myOrders}
                     </Link>
                     <Link
                       href="/dashboard?tab=loyalty"
                       className={styles.dropItem}
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      ✨ Programme VIP
+                      ✨ {t.vipProgram}
                     </Link>
                     <div className={styles.dropDivider} />
                     <button
                       className={`${styles.dropItem} ${styles.dropLogout}`}
                       onClick={() => { logout(); setUserMenuOpen(false); }}
                     >
-                      🚪 Déconnexion
+                      🚪 {t.logout}
                     </button>
                   </div>
                 )}
@@ -124,10 +136,10 @@ export default function Header() {
             ) : (
               <div className={styles.authBtns}>
                 <Link href="/login" className={styles.loginBtn} id="header-login-btn">
-                  Connexion
+                  {t.login}
                 </Link>
                 <Link href="/register" className={styles.registerBtn} id="header-register-btn">
-                  S&apos;inscrire
+                  {t.register}
                 </Link>
               </div>
             )}
@@ -135,9 +147,18 @@ export default function Header() {
             {/* Admin sidebar trigger — visible only for admins */}
             {mounted && isAdminLoggedIn && (
               <button onClick={toggleSidebar} className={styles.accountBtn} id="open-sidebar-btn">
-                ⚙️ Compte Admin
+                ⚙️ {t.adminAccount}
               </button>
             )}
+
+            {/* Langue toggle */}
+            <button
+              onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+              className={styles.langToggleBtn}
+              title={lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
+            >
+              {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
+            </button>
           </nav>
 
           {/* Mobile: panier + hamburger */}
@@ -166,42 +187,45 @@ export default function Header() {
       {menuOpen && (
         <div className={styles.mobileMenu}>
           <Link href="/" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-            🏠 Accueil
+            🏠 {t.home}
+          </Link>
+          <Link href="/wishlist" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
+            ❤️ {t.wishlist} {wishlistCount > 0 && `(${wishlistCount})`}
           </Link>
           <Link href="/cart" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-            🛒 Panier {cartCount > 0 && `(${cartCount})`}
+            🛒 {t.cart} {cartCount > 0 && `(${cartCount})`}
           </Link>
           {mounted && isAdminLoggedIn && (
             <Link href="/admin" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-              ⚙️ Admin
+              ⚙️ {t.admin}
             </Link>
           )}
           {isLoggedIn ? (
             <>
               <Link href="/dashboard" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-                🏠 Mon Dashboard
+                🏠 {t.myDashboard}
               </Link>
               <Link href="/dashboard?tab=orders" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-                📦 Mes Commandes
+                📦 {t.myOrders}
               </Link>
               <Link href="/dashboard?tab=loyalty" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-                ✨ Programme VIP
+                ✨ {t.vipProgram}
               </Link>
               <button
                 onClick={() => { logout(); setMenuOpen(false); }}
                 className={`${styles.mobileMenuLink} ${styles.mobileLogout}`}
                 style={{ textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
               >
-                🚪 Déconnexion
+                🚪 {t.logout}
               </button>
             </>
           ) : (
             <>
               <Link href="/login" className={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>
-                🔐 Se connecter
+                🔐 {t.login}
               </Link>
               <Link href="/register" className={`${styles.mobileMenuLink} ${styles.mobileRegisterLink}`} onClick={() => setMenuOpen(false)}>
-                ✨ Créer un compte
+                ✨ {t.register}
               </Link>
             </>
           )}
@@ -211,9 +235,18 @@ export default function Header() {
               className={styles.mobileMenuLink}
               style={{ textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              ⚙️ Espace Admin
+              ⚙️ {t.adminArea}
             </button>
           )}
+
+          {/* Langue toggle en version mobile */}
+          <button
+            onClick={() => { setLang(lang === 'fr' ? 'en' : 'fr'); setMenuOpen(false); }}
+            className={styles.mobileMenuLink}
+            style={{ textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', width: '100%', color: 'var(--primary)' }}
+          >
+            🌐 {lang === 'fr' ? '🇬🇧 English' : '🇫🇷 Français'}
+          </button>
         </div>
       )}
     </header>

@@ -17,6 +17,7 @@ export function AppProvider({ children }) {
   });
   const [customerOrders, setCustomerOrders] = useState([]);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [lang, setLangState] = useState('fr');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Charger les données de session au démarrage
@@ -51,6 +52,12 @@ export function AppProvider({ children }) {
       } catch (e) {
         console.error('Erreur lors du chargement de l\'historique des commandes:', e);
       }
+    }
+
+    // 4. Langue
+    const savedLang = localStorage.getItem('baya_lang');
+    if (savedLang) {
+      setLangState(savedLang);
     }
 
     setIsLoaded(true);
@@ -105,6 +112,12 @@ export function AppProvider({ children }) {
     setIsAdminLoggedIn(false);
   };
 
+  // Changer de langue
+  const setLang = (newLang) => {
+    localStorage.setItem('baya_lang', newLang);
+    setLangState(newLang);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -120,6 +133,8 @@ export function AppProvider({ children }) {
         customerOrders,
         loyaltyPoints,
         loadClientData,
+        lang,
+        setLang,
         isLoaded
       }}
     >

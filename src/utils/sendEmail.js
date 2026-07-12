@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import fs from 'fs/promises';
 import path from 'path';
+import { generateInvoicePDF } from './generateInvoicePDF';
 
 const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json');
 
@@ -140,6 +141,9 @@ export async function sendConfirmationEmail(order) {
       </html>
     `;
 
+    // 1.5 Générer le PDF de la facture
+    const pdfBuffer = await generateInvoicePDF(order);
+
     // 2. Tenter d'envoyer l'e-mail avec Nodemailer (si variables d'environnement définies)
     const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
     
@@ -148,27 +152,61 @@ export async function sendConfirmationEmail(order) {
 
     if (hasSmtpConfig) {
       try {
-        const transporter = nodemailer.createTransport({
+        const transportConfig = {
           host: process.env.SMTP_HOST,
           port: parseInt(process.env.SMTP_PORT) || 587,
           secure: process.env.SMTP_SECURE === 'true',
           auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS
+          },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+          tls: {
+            rejectUnauthorized: false
           }
-        });
+        };
+
+        // Si c'est Gmail, utiliser le raccourci 'service' pour une meilleure compatibilité
+        if (process.env.SMTP_HOST === 'smtp.gmail.com') {
+          delete transportConfig.host;
+          delete transportConfig.port;
+          delete transportConfig.secure;
+          transportConfig.service = 'gmail';
+        }
+
+        const transporter = nodemailer.createTransport(transportConfig);
+
+        // Vérifier la connexion SMTP avant d'envoyer
+        await transporter.verify();
+        console.log('Connexion SMTP vérifiée avec succès.');
 
         sentInfo = await transporter.sendMail({
-          from: process.env.SMTP_FROM || '"BAYA SHOP" <no-reply@bayashop.com>',
+          from: process.env.SMTP_FROM || process.env.SMTP_USER,
           to: customerEmail,
           subject: emailSubject,
-          html: emailHtml
+          html: emailHtml,
+          attachments: [
+            {
+              filename: `Facture_${orderRef}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }
+          ]
         });
         
         emailStatus = 'sent_via_smtp';
         console.log(`E-mail envoyé avec succès via SMTP à ${customerEmail}`);
       } catch (smtpError) {
-        console.error('Échec de l\'envoi via SMTP, enregistrement en local...', smtpError);
+        console.error('Échec de l\'envoi via SMTP, enregistrement en local...');
+        console.error(`Code d'erreur SMTP: ${smtpError.responseCode || 'N/A'}`);
+        console.error(`Message: ${smtpError.message}`);
+        if (smtpError.responseCode === 535) {
+          console.error('⚠️  SOLUTION: Votre mot de passe d\'application Gmail est invalide ou expiré.');
+          console.error('   → Allez sur https://myaccount.google.com/apppasswords pour en générer un nouveau.');
+          console.error('   → Mettez à jour SMTP_PASS dans .env.local avec le nouveau mot de passe.');
+        }
       }
     }
 
@@ -185,6 +223,15 @@ export async function sendConfirmationEmail(order) {
       await fs.writeFile(emailsFilePath, JSON.stringify([], null, 2), 'utf8');
     }
 
+    // Sauvegarder la facture PDF en local pour pouvoir la consulter plus tard
+    try {
+      const invoicesDir = path.join(process.cwd(), 'src', 'data', 'invoices');
+      await fs.mkdir(invoicesDir, { recursive: true });
+      await fs.writeFile(path.join(invoicesDir, `Facture_${orderRef}.pdf`), pdfBuffer);
+    } catch(err) {
+      console.error('Impossible de sauvegarder la facture en local', err);
+    }
+
     const emailLogEntry = {
       id: loggedEmails.length + 1,
       to: customerEmail,
@@ -192,7 +239,9 @@ export async function sendConfirmationEmail(order) {
       date: new Date().toISOString(),
       status: emailStatus,
       smtpInfo: sentInfo,
-      htmlBody: emailHtml
+      htmlBody: emailHtml,
+      hasAttachment: true,
+      attachmentName: `Facture_${orderRef}.pdf`
     };
 
     loggedEmails.push(emailLogEntry);
@@ -207,6 +256,161 @@ export async function sendConfirmationEmail(order) {
 
   } catch (error) {
     console.error('Erreur dans l\'utilitaire d\'envoi d\'e-mail:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+export async function sendContactEmail(formData) {
+  try {
+    if (!formData) {
+      throw new Error('Données du formulaire de contact manquantes.');
+    }
+
+    const { name, email, phone, subject, message } = formData;
+    const recipientEmail = process.env.SMTP_USER || 'eugenebaya6@gmail.com';
+    const emailSubject = `Nouveau message de contact - ${subject} (${name})`;
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Nouveau message de contact - BAYA SHOP</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          
+          <!-- En-tête -->
+          <div style="background-color: #080b1a; padding: 30px; text-align: center; border-bottom: 3px solid #ff7a00;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 1px;">BAYA SHOP</h1>
+            <p style="color: #ff7a00; margin: 5px 0 0 0; font-size: 14px; font-weight: bold; text-transform: uppercase;">Message de Contact</p>
+          </div>
+          
+          <!-- Corps -->
+          <div style="padding: 30px;">
+            <h2 style="color: #080b1a; margin-top: 0;">Nouveau message reçu !</h2>
+            <p style="line-height: 1.6; color: #666666;">
+              Vous avez reçu un nouveau message via le formulaire de contact de BAYA SHOP.
+            </p>
+            
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 24px 0;">
+              <h3 style="margin-top: 0; color: #080b1a; border-bottom: 1px solid #e9ecef; padding-bottom: 8px;">Informations de l'expéditeur</h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 5px 0; color: #666666; width: 120px;">Nom complet :</td>
+                  <td style="padding: 5px 0; font-weight: bold;">${name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #666666;">Adresse Email :</td>
+                  <td style="padding: 5px 0; font-weight: bold;"><a href="mailto:${email}">${email}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #666666;">Téléphone :</td>
+                  <td style="padding: 5px 0; font-weight: bold;">${phone || 'Non renseigné'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #666666;">Sujet :</td>
+                  <td style="padding: 5px 0; font-weight: bold;">${subject}</td>
+                </tr>
+              </table>
+            </div>
+            
+            <h3 style="color: #080b1a; margin-top: 0;">Contenu du message</h3>
+            <div style="background-color: #f8f9fa; border-left: 4px solid #ff7a00; padding: 15px; font-style: italic; white-space: pre-wrap; line-height: 1.5;">${message}</div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+    let sentInfo = null;
+    let emailStatus = 'logged_locally';
+
+    if (hasSmtpConfig) {
+      try {
+        const transportConfig = {
+          host: process.env.SMTP_HOST,
+          port: parseInt(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+          },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+          tls: {
+            rejectUnauthorized: false
+          }
+        };
+
+        if (process.env.SMTP_HOST === 'smtp.gmail.com') {
+          delete transportConfig.host;
+          delete transportConfig.port;
+          delete transportConfig.secure;
+          transportConfig.service = 'gmail';
+        }
+
+        const transporter = nodemailer.createTransport(transportConfig);
+        await transporter.verify();
+
+        sentInfo = await transporter.sendMail({
+          from: process.env.SMTP_FROM || process.env.SMTP_USER,
+          to: recipientEmail,
+          replyTo: email,
+          subject: emailSubject,
+          html: emailHtml
+        });
+        emailStatus = 'sent_via_smtp';
+        console.log(`E-mail de contact envoyé avec succès via SMTP à ${recipientEmail}`);
+      } catch (smtpError) {
+        console.error('Échec de l\'envoi via SMTP, enregistrement en local...');
+        console.error(`Code d'erreur SMTP: ${smtpError.responseCode || 'N/A'}`);
+        console.error(`Message: ${smtpError.message}`);
+        if (smtpError.responseCode === 535) {
+          console.error('⚠️  SOLUTION: Votre mot de passe d\'application Gmail est invalide ou expiré.');
+          console.error('   → Allez sur https://myaccount.google.com/apppasswords pour en générer un nouveau.');
+          console.error('   → Mettez à jour SMTP_PASS dans .env.local avec le nouveau mot de passe.');
+        }
+      }
+    }
+
+    // Sauvegarder localement
+    let loggedEmails = [];
+    try {
+      const existingData = await fs.readFile(emailsFilePath, 'utf8');
+      loggedEmails = JSON.parse(existingData);
+    } catch (e) {
+      try {
+        await fs.mkdir(path.dirname(emailsFilePath), { recursive: true });
+      } catch(_) {}
+      await fs.writeFile(emailsFilePath, JSON.stringify([], null, 2), 'utf8');
+    }
+
+    const emailLogEntry = {
+      id: loggedEmails.length + 1,
+      to: recipientEmail,
+      subject: emailSubject,
+      date: new Date().toISOString(),
+      status: emailStatus,
+      smtpInfo: sentInfo,
+      htmlBody: emailHtml
+    };
+
+    loggedEmails.push(emailLogEntry);
+    await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
+
+    return {
+      success: true,
+      status: emailStatus,
+      message: emailStatus === 'sent_via_smtp' ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP non configuré).'
+    };
+  } catch (error) {
+    console.error('Erreur dans l\'utilitaire d\'envoi d\'e-mail de contact:', error);
     return {
       success: false,
       error: error.message

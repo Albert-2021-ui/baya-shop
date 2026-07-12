@@ -28,7 +28,14 @@ export async function POST(request) {
               email: customer.email,
               phone_number: {
                 number: customer.phone,
-                country: 'CI'
+                country: (() => {
+                  const cleanPhone = (customer.phone || '').replace(/\s+/g, '');
+                  if (cleanPhone.startsWith('+225') || cleanPhone.startsWith('225')) return 'CI';
+                  if (cleanPhone.startsWith('+229') || cleanPhone.startsWith('229')) return 'BJ';
+                  if (cleanPhone.startsWith('+221') || cleanPhone.startsWith('221')) return 'SN';
+                  if (cleanPhone.startsWith('+228') || cleanPhone.startsWith('228')) return 'TG';
+                  return 'BJ'; // Default to Benin
+                })()
               }
             }
           })

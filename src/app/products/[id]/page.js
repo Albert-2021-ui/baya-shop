@@ -4,6 +4,8 @@ import { useState, useEffect, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '../../../context/CartContext';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { useWishlist } from '../../../context/WishlistContext';
 import { formatPrice } from '../../../utils/formatPrice';
 import styles from './page.module.css';
 
@@ -13,6 +15,9 @@ export default function ProductPage({ params }) {
   const productId = parseInt(resolvedParams?.id, 10);
 
   const { addToCart } = useCart();
+  const { t } = useTranslation();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,17 +67,17 @@ export default function ProductPage({ params }) {
   if (loading) return (
     <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
       <div className="loading-spinner" style={{ margin: '0 auto 16px auto' }} />
-      <p style={{ color: 'var(--text-muted)' }}>Chargement du produit…</p>
+      <p style={{ color: 'var(--text-muted)' }}>{t.loading || 'Chargement...'}</p>
     </div>
   );
 
   if (!product) return (
     <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
       <div style={{ fontSize: '3rem', marginBottom: '16px' }}>😕</div>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '8px' }}>Produit introuvable</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Ce produit n'existe pas ou a été supprimé.</p>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '8px' }}>{t.productNotFound || 'Produit introuvable'}</h1>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>{t.productNotFoundSub || 'Ce produit n\'existe pas ou a été supprimé.'}</p>
       <Link href="/" className="gradient-button" style={{ padding: '12px 28px', borderRadius: '8px', display: 'inline-block' }}>
-        Retour à la boutique
+        {t.backToShop || 'Retour à la boutique'}
       </Link>
     </div>
   );
@@ -83,7 +88,7 @@ export default function ProductPage({ params }) {
     <div className="container" style={{ paddingBottom: '80px' }}>
       {/* Breadcrumb */}
       <nav className={styles.breadcrumb}>
-        <Link href="/" className={styles.breadLink}>Accueil</Link>
+        <Link href="/" className={styles.breadLink}>{t.breadcrumbHome || 'Accueil'}</Link>
         <span className={styles.breadSep}>›</span>
         <span className={styles.breadCurrent}>{product.category}</span>
         <span className={styles.breadSep}>›</span>
@@ -96,7 +101,7 @@ export default function ProductPage({ params }) {
         <div className={styles.galleryCol}>
           <div className={styles.mainImageWrapper}>
             {product.stock <= 0 && (
-              <div className={styles.outOfStockOverlay}>Rupture de stock</div>
+              <div className={styles.outOfStockOverlay}>{t.outOfStock || 'Rupture de stock'}</div>
             )}
             <Image
               src={gallery[activeImg] || product.image}
@@ -135,13 +140,15 @@ export default function ProductPage({ params }) {
               ))}
             </div>
             <span className={styles.ratingNum}>{product.rating}</span>
-            <span className={styles.ratingCount}>• Évaluation client</span>
+            <span className={styles.ratingCount}>• {t.clientReview || 'Évaluation client'}</span>
           </div>
 
           <div className={styles.priceLine}>
             <span className={styles.price}>{formatPrice(product.price)}</span>
             {product.stock > 0 && product.stock <= 5 && (
-              <span className={styles.lowStockBadge}>⚡ Plus que {product.stock} en stock !</span>
+              <span className={styles.lowStockBadge}>
+                ⚡ {(t.lowStockBanner || 'Plus que {stock} restants !').replace('{stock}', product.stock)}
+              </span>
             )}
           </div>
 
@@ -150,7 +157,7 @@ export default function ProductPage({ params }) {
           {/* Quantity selector */}
           {product.stock > 0 && (
             <div className={styles.qtyRow}>
-              <span className={styles.qtyLabel}>Quantité :</span>
+              <span className={styles.qtyLabel}>{t.quantityLabel || 'Quantité :'}</span>
               <div className={styles.qtyControls}>
                 <button
                   className={styles.qtyBtn}
@@ -164,35 +171,50 @@ export default function ProductPage({ params }) {
                   disabled={qty >= product.stock}
                 >+</button>
               </div>
-              <span className={styles.stockInfo}>{product.stock} disponibles</span>
+              <span className={styles.stockInfo}>{product.stock} {t.available || 'disponibles'}</span>
             </div>
           )}
 
           {/* CTA */}
           <div className={styles.ctaRow}>
             {product.stock > 0 ? (
-              <button
-                onClick={handleAddToCart}
-                className={`${styles.addBtn} gradient-button`}
-                id="product-add-to-cart"
-              >
-                {added ? '✅ Ajouté au panier !' : `🛒 Ajouter au panier — ${formatPrice(product.price * qty)}`}
-              </button>
+              <>
+                <button
+                  onClick={handleAddToCart}
+                  className={`${styles.addBtn} gradient-button`}
+                  id="product-add-to-cart"
+                >
+                  {added
+                    ? (t.addedToCartSuccess || '✅ Ajouté au panier !')
+                    : (t.addToCartWithPrice || 'Ajouter au panier — {price}').replace('{price}', formatPrice(product.price * qty))
+                  }
+                </button>
+                
+                {/* Bouton favoris cœur */}
+                <button
+                  onClick={() => toggleWishlist(product)}
+                  className={`${styles.wishlistBtn} ${isInWishlist(product.id) ? styles.wishlistActive : ''}`}
+                  title={isInWishlist(product.id) ? t.removeFromWishlist : t.addToWishlist}
+                  type="button"
+                >
+                  {isInWishlist(product.id) ? '❤️' : '🤍'}
+                </button>
+              </>
             ) : (
-              <div className={styles.outOfStockMsg}>😔 Ce produit est actuellement indisponible.</div>
+              <div className={styles.outOfStockMsg}>{t.productUnavailable || '😔 Ce produit est actuellement indisponible.'}</div>
             )}
             {added && (
               <Link href="/cart" className={styles.viewCartLink}>
-                Voir le panier →
+                {t.viewCartBtn || 'Voir le panier →'}
               </Link>
             )}
           </div>
 
           {/* Trust */}
           <div className={styles.trustRow}>
-            <div className={styles.trustItem}><span>🔒</span><span>Paiement sécurisé</span></div>
-            <div className={styles.trustItem}><span>📦</span><span>Livraison 24–48h</span></div>
-            <div className={styles.trustItem}><span>✅</span><span>Retours acceptés</span></div>
+            <div className={styles.trustItem}><span>🔒</span><span>{t.trustSecure || 'Paiement sécurisé'}</span></div>
+            <div className={styles.trustItem}><span>📦</span><span>{t.trustDelivery || 'Livraison 24–48h'}</span></div>
+            <div className={styles.trustItem}><span>✅</span><span>{t.trustReturns || 'Retours acceptés'}</span></div>
           </div>
         </div>
       </div>
@@ -200,7 +222,7 @@ export default function ProductPage({ params }) {
       {/* Related Products */}
       {related.length > 0 && (
         <section className={styles.relatedSection}>
-          <h2 className={styles.relatedTitle}>Produits similaires</h2>
+          <h2 className={styles.relatedTitle}>{t.relatedProducts || 'Produits similaires'}</h2>
           <div className={styles.relatedGrid}>
             {related.map(p => (
               <Link key={p.id} href={`/products/${p.id}`} className={`${styles.relatedCard} glass-card`}>

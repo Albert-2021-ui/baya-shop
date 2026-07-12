@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import styles from './register.module.css';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
+  const { t } = useTranslation();
 
   const [form, setForm] = useState({
     firstName: '',
@@ -34,15 +36,15 @@ export default function RegisterPage() {
     setError('');
 
     if (!form.firstName || !form.lastName || !form.email || !form.password) {
-      setError('Veuillez remplir tous les champs obligatoires.');
+      setError(t.fillRequiredFields || 'Veuillez remplir tous les champs obligatoires.');
       return;
     }
     if (form.password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères.');
+      setError(t.passwordLengthError || 'Le mot de passe doit contenir au moins 6 caractères.');
       return;
     }
     if (form.password !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(t.passwordMismatchError || 'Les mots de passe ne correspondent pas.');
       return;
     }
 
@@ -65,28 +67,28 @@ export default function RegisterPage() {
           <div className={styles.brandLogoLarge}>
             BAYA <span>SHOP</span>
           </div>
-          <h2 className={styles.leftHeading}>
-            Bienvenue dans<br />votre espace client
+          <h2 className={styles.leftHeading} style={{ whiteSpace: 'pre-line' }}>
+            {t.welcomeRegister || 'Bienvenue dans\nvotre espace client'}
           </h2>
           <p className={styles.leftSub}>
-            Créez votre compte gratuit et profitez d'une expérience shopping premium — suivi de commandes, programme fidélité et bien plus.
+            {t.registerDesc || 'Créez votre compte gratuit et profitez d\'une expérience shopping premium — suivi de commandes, programme fidélité et bien plus.'}
           </p>
           <div className={styles.leftFeatures}>
             <div className={styles.featureItem}>
               <span className={styles.featureIcon}>📦</span>
-              <span>Suivi de vos commandes en temps réel</span>
+              <span>{t.registerFeature1 || 'Suivi de vos commandes en temps réel'}</span>
             </div>
             <div className={styles.featureItem}>
               <span className={styles.featureIcon}>✨</span>
-              <span>Programme fidélité &amp; points VIP</span>
+              <span>{t.registerFeature2 || 'Programme fidélité & points VIP'}</span>
             </div>
             <div className={styles.featureItem}>
               <span className={styles.featureIcon}>🔒</span>
-              <span>Paiements sécurisés &amp; protégés</span>
+              <span>{t.registerFeature3 || 'Paiements sécurisés & protégés'}</span>
             </div>
             <div className={styles.featureItem}>
               <span className={styles.featureIcon}>⚡</span>
-              <span>Commander en 1 clic grâce à votre profil</span>
+              <span>{t.registerFeature4 || 'Commander en 1 clic grâce à votre profil'}</span>
             </div>
           </div>
           <div className={styles.leftDecoCircle1} />
@@ -98,11 +100,11 @@ export default function RegisterPage() {
       <div className={styles.rightPanel}>
         <div className={styles.formCard}>
           <div className={styles.formHeader}>
-            <h1 className={styles.formTitle}>Créer un compte</h1>
+            <h1 className={styles.formTitle}>{t.registerTitle || 'Créer un compte'}</h1>
             <p className={styles.formSubtitle}>
-              Déjà inscrit ?{' '}
+              {t.alreadyRegistered || 'Déjà inscrit ?'}{' '}
               <Link href="/login" className={styles.switchLink}>
-                Se connecter
+                {t.login || 'Se connecter'}
               </Link>
             </p>
           </div>
@@ -117,7 +119,7 @@ export default function RegisterPage() {
             <div className={styles.formRow}>
               <div className={styles.inputGroup}>
                 <label className={styles.label} htmlFor="firstName">
-                  Prénom <span className={styles.required}>*</span>
+                  {t.firstName || 'Prénom'} <span className={styles.required}>*</span>
                 </label>
                 <input
                   id="firstName"
@@ -133,7 +135,7 @@ export default function RegisterPage() {
               </div>
               <div className={styles.inputGroup}>
                 <label className={styles.label} htmlFor="lastName">
-                  Nom <span className={styles.required}>*</span>
+                  {t.lastName || 'Nom'} <span className={styles.required}>*</span>
                 </label>
                 <input
                   id="lastName"
@@ -151,7 +153,7 @@ export default function RegisterPage() {
 
             <div className={styles.inputGroup}>
               <label className={styles.label} htmlFor="reg-email">
-                Adresse e-mail <span className={styles.required}>*</span>
+                {t.emailAddressLabel || 'Adresse e-mail'} <span className={styles.required}>*</span>
               </label>
               <input
                 id="reg-email"
@@ -168,7 +170,7 @@ export default function RegisterPage() {
 
             <div className={styles.inputGroup}>
               <label className={styles.label} htmlFor="phone">
-                Téléphone (WhatsApp)
+                {t.phoneWhatsApp || 'Téléphone (WhatsApp)'}
               </label>
               <input
                 id="phone"
@@ -185,7 +187,7 @@ export default function RegisterPage() {
             <div className={styles.formRow}>
               <div className={styles.inputGroup}>
                 <label className={styles.label} htmlFor="city">
-                  Ville
+                  {t.city || 'Ville'}
                 </label>
                 <input
                   id="city"
@@ -199,7 +201,7 @@ export default function RegisterPage() {
               </div>
               <div className={styles.inputGroup}>
                 <label className={styles.label} htmlFor="address">
-                  Adresse
+                  {t.address || 'Adresse'}
                 </label>
                 <input
                   id="address"
@@ -215,7 +217,7 @@ export default function RegisterPage() {
 
             <div className={styles.inputGroup}>
               <label className={styles.label} htmlFor="reg-password">
-                Mot de passe <span className={styles.required}>*</span>
+                {t.passwordLabel || 'Mot de passe'} <span className={styles.required}>*</span>
               </label>
               <div className={styles.passwordWrapper}>
                 <input
@@ -223,7 +225,7 @@ export default function RegisterPage() {
                   name="password"
                   type={showPass ? 'text' : 'password'}
                   className={styles.input}
-                  placeholder="Minimum 6 caractères"
+                  placeholder={t.passwordMinChar || 'Minimum 6 caractères'}
                   value={form.password}
                   onChange={handleChange}
                   required
@@ -243,14 +245,14 @@ export default function RegisterPage() {
 
             <div className={styles.inputGroup}>
               <label className={styles.label} htmlFor="confirmPassword">
-                Confirmer le mot de passe <span className={styles.required}>*</span>
+                {t.confirmPasswordLabel || 'Confirmer le mot de passe'} <span className={styles.required}>*</span>
               </label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
                 type={showPass ? 'text' : 'password'}
                 className={styles.input}
-                placeholder="Répétez le mot de passe"
+                placeholder={t.confirmPasswordPlaceholder || 'Répétez le mot de passe'}
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
@@ -261,8 +263,8 @@ export default function RegisterPage() {
             <div className={styles.termsCheck}>
               <input type="checkbox" id="terms" required className={styles.checkbox} />
               <label htmlFor="terms" className={styles.termsLabel}>
-                J'accepte les{' '}
-                <span className={styles.termsLink}>Conditions Générales d'Utilisation</span> de BAYA SHOP
+                {t.acceptTerms || 'J\'accepte les'}{' '}
+                <span className={styles.termsLink}>{t.termsOfUse || 'Conditions Générales d\'Utilisation'}</span> {t.ofBayaShop || 'de BAYA SHOP'}
               </label>
             </div>
 
@@ -276,7 +278,7 @@ export default function RegisterPage() {
                 <span className={styles.btnSpinner} />
               ) : (
                 <>
-                  <span>Créer mon compte</span>
+                  <span>{t.createAccountBtn || 'Créer mon compte'}</span>
                   <span className={styles.btnArrow}>→</span>
                 </>
               )}
@@ -284,11 +286,11 @@ export default function RegisterPage() {
           </form>
 
           <div className={styles.divider}>
-            <span>ou</span>
+            <span>{t.orLabel || 'ou'}</span>
           </div>
 
           <Link href="/" className={styles.backHome}>
-            ← Retour à la boutique
+            {t.backToShop || '← Retour à la boutique'}
           </Link>
         </div>
       </div>

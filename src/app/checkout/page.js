@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import { formatPrice } from '../../utils/formatPrice';
 import styles from './page.module.css';
 
 export default function CheckoutPage() {
   const { cart, getCartTotal, clearCart, isLoaded } = useCart();
   const { user } = useAuth();
+  const { t, lang } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
@@ -76,7 +78,7 @@ export default function CheckoutPage() {
         address:   user.address   || '',
         city:      user.city      || '',
       });
-      return; // don't overwrite with legacy profile
+      return;
     }
 
     // Priority 2: legacy baya_client_profile fallback
@@ -102,7 +104,7 @@ export default function CheckoutPage() {
     return (
       <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
         <div className="loading-spinner" style={{ margin: '0 auto 16px auto' }}></div>
-        <p>Chargement du tunnel de commande...</p>
+        <p>{t.loading || 'Chargement...'}</p>
       </div>
     );
   }
@@ -110,13 +112,13 @@ export default function CheckoutPage() {
   if (cart.length === 0) {
     return (
       <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
-        <h2>Votre panier est vide.</h2>
+        <h2>{t.emptyCart || 'Votre panier est vide.'}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '10px 0 20px 0' }}>
-          Vous devez ajouter des articles avant de passer commande.
+          {t.noProductsSub || 'Explorez nos collections pour trouver votre bonheur !'}
         </p>
         <Link href="/">
           <button className="gradient-button" style={{ padding: '12px 24px', borderRadius: '8px' }}>
-            Retour à l'accueil
+            {t.backToShop || 'Retour à la boutique'}
           </button>
         </Link>
       </div>
@@ -126,7 +128,6 @@ export default function CheckoutPage() {
   const subtotal = getCartTotal();
   const shippingFee = subtotal >= 150000 ? 0 : 2000;
   const total = subtotal + shippingFee;
-
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -139,18 +140,18 @@ export default function CheckoutPage() {
     
     // Validation informations de livraison
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.address || !formData.city) {
-      alert('Veuillez remplir toutes les informations de livraison.');
+      alert(t.fillAllDelivery || 'Veuillez remplir toutes les informations de livraison.');
       return;
     }
 
     // Validation spécifique pour les transferts manuels
     if (paymentGateway === 'direct_transfer' && (!directMomoDetails.senderNumber || !directMomoDetails.transactionRef)) {
-      alert('Veuillez entrer le numéro expéditeur et la référence du transfert.');
+      alert(t.fillMomoDetails || 'Veuillez entrer le numéro expéditeur et la référence du transfert.');
       return;
     }
 
     if (paymentGateway === 'bank_transfer' && (!directBankDetails.bankSenderName || !directBankDetails.virementRef)) {
-      alert('Veuillez entrer le nom de l\'expéditeur et la référence du virement.');
+      alert(t.fillBankDetails || 'Veuillez entrer le nom de l\'expéditeur et la référence du virement.');
       return;
     }
 
@@ -161,7 +162,7 @@ export default function CheckoutPage() {
     // 1. Préparer le payload de commande
     const orderPayload = {
       customer: formData,
-      userId: user?.id || null,           // ← link order to auth user
+      userId: user?.id || null,
       items: cart,
       payment: {
         method: paymentGateway,
@@ -176,7 +177,7 @@ export default function CheckoutPage() {
 
     // A. SI PAIEMENT AUTOMATISÉ (FedaPay ou CinetPay) : Redirection
     if (paymentGateway === 'fedapay' || paymentGateway === 'cinetpay') {
-      setProcessingMessage('Initialisation de votre espace de paiement sécurisé...');
+      setProcessingMessage(t.processingInitGateway || 'Initialisation de votre espace de paiement sécurisé...');
       
       // Sauvegarder la commande temporairement pour l'écran sandbox
       localStorage.setItem('pending_checkout_order', JSON.stringify(orderPayload));
@@ -198,46 +199,75 @@ export default function CheckoutPage() {
           const data = await res.json();
           if (data.success && data.redirectUrl) {
             setProcessingMessage(data.realGateway
-              ? 'Connexion sécurisée établie. Redirection...'
-              : 'Redirection vers la passerelle de test locale...');
+              ? (t.processingRedirectGateway || 'Connexion sécurisée établie. Redirection...')
+              : (t.processingRedirectSandbox || 'Redirection vers la passerelle de test locale...'));
 
-            // Save a "pending" order to history NOW (sandbox will update it)
-            const pendingOrder = {
-              ...orderPayload,
-              id: orderReference,
-              status: 'pending',
-            };
-            let clientHistory = [];
-            const savedHistory = localStorage.getItem('baya_customer_orders_history');
-            if (savedHistory) {
-              try { clientHistory = JSON.parse(savedHistory); } catch(e) {}
-            }
-            // Avoid duplicate if user refreshes
-            if (!clientHistory.find(o => o.id === orderReference)) {
-              clientHistory.push(pendingOrder);
-              localStorage.setItem('baya_customer_orders_history', JSON.stringify(clientHistory));
+            if (data.realGateway) {
+              // Si passerelle réelle, enregistrer la commande sur le serveur maintenant
+              orderPayload.status = 'pending_payment';
+              try {
+                const checkoutRes = await fetch('/api/checkout', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(orderPayload)
+                });
+                if (checkoutRes.ok) {
+                  const checkoutData = await checkoutRes.json();
+                  // Sauvegarder dans l'historique local du client
+                  let clientHistory = [];
+                  const savedHistory = localStorage.getItem('baya_customer_orders_history');
+                  if (savedHistory) {
+                    try { clientHistory = JSON.parse(savedHistory); } catch(e) {}
+                  }
+                  clientHistory.push(checkoutData.order);
+                  localStorage.setItem('baya_customer_orders_history', JSON.stringify(clientHistory));
+
+                  // Sauvegarder pour la page success
+                  localStorage.setItem('last_completed_order', JSON.stringify(checkoutData.order));
+                  clearCart();
+                }
+              } catch (checkoutErr) {
+                console.error('Erreur lors de la création de la commande réelle:', checkoutErr);
+              }
+            } else {
+              // Si simulation de test, sauvegarder la commande temporairement
+              const pendingOrder = {
+                ...orderPayload,
+                id: orderReference,
+                status: 'pending',
+              };
+              let clientHistory = [];
+              const savedHistory = localStorage.getItem('baya_customer_orders_history');
+              if (savedHistory) {
+                try { clientHistory = JSON.parse(savedHistory); } catch(e) {}
+              }
+              // Avoid duplicate if user refreshes
+              if (!clientHistory.find(o => o.id === orderReference)) {
+                clientHistory.push(pendingOrder);
+                localStorage.setItem('baya_customer_orders_history', JSON.stringify(clientHistory));
+              }
             }
 
             setTimeout(() => {
               window.location.href = data.redirectUrl;
             }, 1000);
           } else {
-            alert('Erreur lors de l\'initialisation du paiement.');
+            alert(lang === 'fr' ? 'Erreur lors de l\'initialisation du paiement.' : 'Error initializing payment.');
             setProcessing(false);
           }
         } else {
-          alert('Erreur serveur.');
+          alert(lang === 'fr' ? 'Erreur serveur.' : 'Server error.');
           setProcessing(false);
         }
       } catch (err) {
         console.error(err);
-        alert('Erreur réseau.');
+        alert(lang === 'fr' ? 'Erreur réseau.' : 'Network error.');
         setProcessing(false);
       }
     } 
     // B. SI PAIEMENT DIRECT (Manuel par Mobile Money ou Virement) : Validation immédiate !
     else {
-      setProcessingMessage('Enregistrement de votre commande en attente de vérification manuelle...');
+      setProcessingMessage(t.processingManualOrder || 'Enregistrement de votre commande en attente de vérification manuelle...');
       
       // Compléter les détails de paiement avec les références saisies par le client
       if (paymentGateway === 'direct_transfer') {
@@ -274,18 +304,18 @@ export default function CheckoutPage() {
           localStorage.setItem('last_completed_order', JSON.stringify(result.order));
 
           clearCart();
-          setProcessingMessage('Commande enregistrée avec succès ! Génération de votre quittance...');
+          setProcessingMessage(t.processingSuccessInvoice || 'Commande enregistrée avec succès ! Génération de votre quittance...');
           
           setTimeout(() => {
             router.push('/success');
           }, 1500);
         } else {
-          alert('Erreur lors de la validation de la commande.');
+          alert(lang === 'fr' ? 'Erreur lors de la validation de la commande.' : 'Error validating order.');
           setProcessing(false);
         }
       } catch (err) {
         console.error(err);
-        alert('Erreur réseau.');
+        alert(lang === 'fr' ? 'Erreur réseau.' : 'Network error.');
         setProcessing(false);
       }
     }
@@ -298,16 +328,16 @@ export default function CheckoutPage() {
         <div className={styles.overlay}>
           <div className={`${styles.modal} glass-card`}>
             <div className="loading-spinner"></div>
-            <h3 className={styles.modalTitle}>Traitement en cours</h3>
+            <h3 className={styles.modalTitle}>{t.processingTitle || 'Traitement en cours'}</h3>
             <p className={styles.modalText}>{processingMessage}</p>
           </div>
         </div>
       )}
 
       <div className={styles.checkoutHeader}>
-        <h1 className={styles.checkoutTitle}>Paiement & Commande</h1>
+        <h1 className={styles.checkoutTitle}>{t.checkoutTitle || 'Paiement & Commande'}</h1>
         <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Sélectionnez votre moyen de paiement et finalisez votre commande.
+          {t.checkoutSubtitle || 'Sélectionnez votre moyen de paiement et finalisez votre commande.'}
         </p>
       </div>
 
@@ -316,11 +346,11 @@ export default function CheckoutPage() {
         <form onSubmit={handleSubmit}>
           {/* Section Adresse */}
           <div className={`${styles.formSection} glass-card`}>
-            <h2 className={styles.sectionTitle}>1. Adresse de Livraison</h2>
+            <h2 className={styles.sectionTitle}>{t.deliveryAddress || '1. Adresse de Livraison'}</h2>
             
             <div className={styles.formRow}>
               <div className="input-group">
-                <label className="input-label">Prénom *</label>
+                <label className="input-label">{t.firstNameLabel || 'Prénom *'}</label>
                 <input
                   type="text"
                   name="firstName"
@@ -331,7 +361,7 @@ export default function CheckoutPage() {
                 />
               </div>
               <div className="input-group">
-                <label className="input-label">Nom *</label>
+                <label className="input-label">{t.lastNameLabel || 'Nom *'}</label>
                 <input
                   type="text"
                   name="lastName"
@@ -344,7 +374,7 @@ export default function CheckoutPage() {
             </div>
 
             <div className="input-group">
-              <label className="input-label">Adresse e-mail * (pour l'envoi de la facture)</label>
+              <label className="input-label">{t.emailInvoiceLabel || 'Adresse e-mail * (pour l\'envoi de la facture)'}</label>
               <input
                 type="email"
                 name="email"
@@ -357,11 +387,11 @@ export default function CheckoutPage() {
             </div>
 
             <div className="input-group">
-              <label className="input-label">Téléphone de livraison *</label>
+              <label className="input-label">{t.deliveryPhoneLabel || 'Téléphone de livraison *'}</label>
               <input
                 type="tel"
                 name="phone"
-                placeholder="Ex: +225 0707070707"
+                placeholder="Ex: +229 01 02 03 04"
                 value={formData.phone}
                 onChange={handleInputChange}
                 className="input-field"
@@ -371,7 +401,7 @@ export default function CheckoutPage() {
 
             <div className={styles.formRow}>
               <div className="input-group">
-                <label className="input-label">Adresse complète *</label>
+                <label className="input-label">{t.addressLabel || 'Adresse complète *'}</label>
                 <input
                   type="text"
                   name="address"
@@ -383,11 +413,11 @@ export default function CheckoutPage() {
                 />
               </div>
               <div className="input-group">
-                <label className="input-label">Ville *</label>
+                <label className="input-label">{t.cityLabel || 'Ville *'}</label>
                 <input
                   type="text"
                   name="city"
-                  placeholder="Ex: Abidjan"
+                  placeholder="Ex: Cotonou"
                   value={formData.city}
                   onChange={handleInputChange}
                   className="input-field"
@@ -399,7 +429,7 @@ export default function CheckoutPage() {
 
           {/* Section Paiement */}
           <div className={`${styles.formSection} glass-card`}>
-            <h2 className={styles.sectionTitle}>2. Choisissez votre mode de Paiement</h2>
+            <h2 className={styles.sectionTitle}>{t.choosePayment || '2. Choisissez votre mode de Paiement'}</h2>
             
             <div className={styles.paymentSelector} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
               <div
@@ -409,7 +439,7 @@ export default function CheckoutPage() {
               >
                 <span className={styles.optionIcon} style={{ color: '#10B981', fontWeight: 'bold', fontSize: '1.4rem' }}>F</span>
                 <span className={styles.optionLabel} style={{ fontSize: '0.85rem' }}>FedaPay</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Automatique</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{t.automaticGateway || 'Automatique'}</span>
               </div>
 
               <div
@@ -419,7 +449,7 @@ export default function CheckoutPage() {
               >
                 <span className={styles.optionIcon} style={{ color: '#00A6FF', fontWeight: 'bold', fontSize: '1.4rem' }}>C</span>
                 <span className={styles.optionLabel} style={{ fontSize: '0.85rem' }}>CinetPay</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Automatique</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{t.automaticGateway || 'Automatique'}</span>
               </div>
 
               <div
@@ -428,8 +458,8 @@ export default function CheckoutPage() {
                 style={{ padding: '15px 10px' }}
               >
                 <span className={styles.optionIcon} style={{ fontSize: '1.4rem' }}>📲</span>
-                <span className={styles.optionLabel} style={{ fontSize: '0.85rem' }}>Transfert Direct</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Mobile Money</span>
+                <span className={styles.optionLabel} style={{ fontSize: '0.85rem' }}>{t.directTransfer || 'Transfert Direct'}</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{t.momoLabel || 'Mobile Money'}</span>
               </div>
 
               <div
@@ -438,8 +468,8 @@ export default function CheckoutPage() {
                 style={{ padding: '15px 10px' }}
               >
                 <span className={styles.optionIcon} style={{ fontSize: '1.4rem' }}>🏦</span>
-                <span className={styles.optionLabel} style={{ fontSize: '0.85rem' }}>Virement</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Bancaire Manuel</span>
+                <span className={styles.optionLabel} style={{ fontSize: '0.85rem' }}>{t.bankTransferManual || 'Virement'}</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{t.bankLabel || 'Bancaire Manuel'}</span>
               </div>
             </div>
 
@@ -448,14 +478,14 @@ export default function CheckoutPage() {
               {/* FEDAPAY */}
               {paymentGateway === 'fedapay' && (
                 <p style={{ color: 'var(--text-secondary)' }}>
-                  ℹ️ Redirection vers la passerelle sécurisée <b>FedaPay</b> pour régler par Mobile Money (Orange, MTN, Moov, Wave) ou Carte Bancaire.
+                  {t.fedapayDesc || 'ℹ️ Redirection vers la passerelle sécurisée FedaPay pour régler par Mobile Money (Orange, MTN, Moov, Wave) ou Carte Bancaire.'}
                 </p>
               )}
 
               {/* CINETPAY */}
               {paymentGateway === 'cinetpay' && (
                 <p style={{ color: 'var(--text-secondary)' }}>
-                  ℹ️ Redirection vers la passerelle sécurisée <b>CinetPay</b> pour régler par vos solutions de paiement locales Mobile Money et Cartes de Crédit.
+                  {t.cinetpayDesc || 'ℹ️ Redirection vers la passerelle sécurisée CinetPay pour régler par vos solutions de paiement locales Mobile Money et Cartes de Crédit.'}
                 </p>
               )}
 
@@ -463,7 +493,7 @@ export default function CheckoutPage() {
               {paymentGateway === 'direct_transfer' && (
                 <div className="animate-fade" style={{ textAlign: 'left' }}>
                   <p style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '12px' }}>
-                    Faites un transfert Mobile Money direct du montant de <b>{formatPrice(total)}</b> sur l'un de nos numéros réels :
+                    {(t.directTransferInstruction || 'Faites un transfert Mobile Money direct du montant de {amount} sur l\'un de nos numéros réels :').replace('{amount}', formatPrice(total))}
                   </p>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
@@ -476,7 +506,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="input-group">
-                    <label className="input-label">Opérateur utilisé *</label>
+                    <label className="input-label">{t.operatorUsed || 'Opérateur utilisé *'}</label>
                     <select
                       value={directMomoDetails.operator}
                       onChange={(e) => setDirectMomoDetails({ ...directMomoDetails, operator: e.target.value })}
@@ -491,7 +521,7 @@ export default function CheckoutPage() {
 
                   <div className={styles.formRow}>
                     <div className="input-group">
-                      <label className="input-label">Votre numéro de téléphone payeur *</label>
+                      <label className="input-label">{t.yourPayphone || 'Votre numéro de téléphone expéditeur *'}</label>
                       <input
                         type="tel"
                         placeholder="Ex: 07XXXXXXXX"
@@ -502,7 +532,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="input-group">
-                      <label className="input-label">Référence / ID de transaction *</label>
+                      <label className="input-label">{t.transactionRefLabel || 'Référence / ID de transaction *'}</label>
                       <input
                         type="text"
                         placeholder="Ex: TX-98218987"
@@ -520,18 +550,18 @@ export default function CheckoutPage() {
               {paymentGateway === 'bank_transfer' && (
                 <div className="animate-fade" style={{ textAlign: 'left' }}>
                   <p style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '12px' }}>
-                    Effectuez un virement bancaire du montant de <b>{formatPrice(total)}</b> sur le compte d'Albert :
+                    {(t.bankTransferInstruction || 'Effectuez un virement bancaire du montant de {amount} sur le compte d\'Albert :').replace('{amount}', formatPrice(total))}
                   </p>
                   
                   <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                    <div><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Titulaire du Compte :</span> <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{config.bankDetails.accountName}</span></div>
-                    <div><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Banque :</span> <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{config.bankDetails.bankName}</span></div>
-                    <div><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Numéro de Compte (RIB) :</span> <span style={{ fontWeight: '700', color: 'var(--primary)', fontSize: '0.95rem' }}>{config.bankDetails.accountNumber}</span></div>
+                    <div><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t.bankAccountName || 'Titulaire du Compte :'}</span> <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{config.bankDetails.accountName}</span></div>
+                    <div><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t.bankNameLabel || 'Banque :'}</span> <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{config.bankDetails.bankName}</span></div>
+                    <div><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t.bankRibLabel || 'Numéro de Compte (RIB) :'}</span> <span style={{ fontWeight: '700', color: 'var(--primary)', fontSize: '0.95rem' }}>{config.bankDetails.accountNumber}</span></div>
                   </div>
 
                   <div className={styles.formRow}>
                     <div className="input-group">
-                      <label className="input-label">Nom du compte expéditeur *</label>
+                      <label className="input-label">{t.bankSenderNameLabel || 'Nom du compte expéditeur *'}</label>
                       <input
                         type="text"
                         placeholder="Ex: Albert Baya"
@@ -542,7 +572,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="input-group">
-                      <label className="input-label">Référence du virement *</label>
+                      <label className="input-label">{t.bankTransferRefLabel || 'Référence du virement *'}</label>
                       <input
                         type="text"
                         placeholder="Ex: VR-9812732"
@@ -558,14 +588,14 @@ export default function CheckoutPage() {
             </div>
 
             <button type="submit" className="gradient-button submitBtn">
-              Valider et Payer ({formatPrice(total)})
+              {(t.checkoutPayBtn || 'Valider et Payer ({amount})').replace('{amount}', formatPrice(total))}
             </button>
           </div>
         </form>
 
         {/* Détails panier à droite */}
         <div className={`${styles.checkoutSummaryCard} glass-card`}>
-          <h2 className={styles.sectionTitle}>Votre commande</h2>
+          <h2 className={styles.sectionTitle}>{t.yourOrderSummary || 'Votre commande'}</h2>
           
           <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
             {cart.map((item) => (
@@ -585,25 +615,25 @@ export default function CheckoutPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <span>Sous-total</span>
-              <span>{formatPrice(subtotal)}</span>
+            <div style={{ display: 'flex', justifycontent: 'space-between', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <span>{t.subtotal || 'Sous-total'}</span>
+              <span style={{ marginLeft: 'auto' }}>{formatPrice(subtotal)}</span>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <span>Frais de livraison</span>
-              <span>
+            <div style={{ display: 'flex', justifycontent: 'space-between', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <span>{t.shipping || 'Livraison'}</span>
+              <span style={{ marginLeft: 'auto' }}>
                 {shippingFee === 0 ? (
-                  <span style={{ color: 'var(--success)' }}>Gratuit</span>
+                  <span style={{ color: 'var(--success)' }}>{t.freeShipping || '✓ Gratuite'}</span>
                 ) : (
                   formatPrice(shippingFee)
                 )}
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: '800', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: '4px' }}>
-              <span>Total</span>
-              <span style={{ color: 'var(--primary)' }}>{formatPrice(total)}</span>
+            <div style={{ display: 'flex', justifycontent: 'space-between', fontSize: '1.2rem', fontWeight: '800', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: '4px' }}>
+              <span>{t.total || 'Total'}</span>
+              <span style={{ marginLeft: 'auto', color: 'var(--primary)' }}>{formatPrice(total)}</span>
             </div>
           </div>
         </div>
