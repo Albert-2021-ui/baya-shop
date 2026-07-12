@@ -14,7 +14,8 @@ export async function POST(request) {
       return NextResponse.json({
         success: true,
         status: result.status,
-        message: result.message
+        message: result.message,
+        devMode: result.status === 'logged_locally_dev'
       });
     } else {
       return NextResponse.json({ error: result.error }, { status: 500 });

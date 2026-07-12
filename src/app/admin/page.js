@@ -17,8 +17,10 @@ export default function AdminPage() {
   const [loggingIn, setLoggingIn] = useState(false);
 
   // Données du Dashboard
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, orders, products
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, orders, products, clients
   const [orders, setOrders] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
   const [products, setProducts] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -43,11 +45,27 @@ export default function AdminPage() {
       setIsLoggedIn(true);
       fetchOrders();
       fetchProducts();
+      fetchClients();
     } else {
       setIsLoggedIn(false);
     }
     setCheckingLogin(false);
   }, [contextAdminLoggedIn]);
+
+  const fetchClients = async () => {
+    setLoadingClients(true);
+    try {
+      const res = await fetch('/api/clients');
+      if (res.ok) {
+        const data = await res.json();
+        setClients(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoadingOrders(true);
@@ -101,6 +119,7 @@ export default function AdminPage() {
         // Charger les données du dashboard
         fetchOrders();
         fetchProducts();
+        fetchClients();
       } else {
         setLoginError(data.error || 'Erreur lors de la connexion.');
       }
@@ -229,11 +248,11 @@ export default function AdminPage() {
     doc.text('Mode de Paiement :', 110, 63);
     
     doc.setFont('helvetica', 'normal');
-    doc.text(order.payment.reference || 'N/A', 150, 52);
+    doc.text(order?.payment?.reference || 'N/A', 150, 52);
     doc.text(new Date(order.date).toLocaleDateString('fr-FR'), 150, 58);
     
-    const paymentLabel = order.payment.method === 'momo'
-      ? `Mobile Money (${order.payment.provider.toUpperCase()})`
+    const paymentLabel = order?.payment?.method === 'momo'
+      ? `Mobile Money (${order?.payment?.provider.toUpperCase()})`
       : 'Carte Bancaire';
     doc.text(paymentLabel, 150, 63);
 
@@ -243,10 +262,10 @@ export default function AdminPage() {
     doc.setFont('helvetica', 'bold');
     doc.text('Facturé à :', 20, 85);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${order.customer.firstName} ${order.customer.lastName}`, 20, 91);
-    doc.text(order.customer.email, 20, 96);
-    doc.text(order.customer.phone, 20, 101);
-    doc.text(`${order.customer.address}, ${order.customer.city}`, 20, 106);
+    doc.text(`${order?.customer?.firstName} ${order?.customer?.lastName}`, 20, 91);
+    doc.text(order?.customer?.email, 20, 96);
+    doc.text(order?.customer?.phone, 20, 101);
+    doc.text(`${order?.customer?.address}, ${order?.customer?.city}`, 20, 106);
 
     // Tampon vert PAYÉ
     doc.setDrawColor(16, 185, 129);
@@ -305,7 +324,7 @@ export default function AdminPage() {
     doc.text('Merci de votre confiance pour votre achat chez BAYA SHOP.', 105, 275, null, null, 'center');
     doc.text('Ceci est une facture acquittée électroniquement.', 105, 280, null, null, 'center');
 
-    doc.save(`Facture_${order.payment.reference}.pdf`);
+    doc.save(`Facture_${order?.payment?.reference}.pdf`);
   };
 
   // Calculs statistiques
@@ -313,6 +332,7 @@ export default function AdminPage() {
   const activeOrdersCount = orders.filter(o => o.status !== 'canceled').length;
   const avgOrderValue = activeOrdersCount > 0 ? totalSales / activeOrdersCount : 0;
   const outOfStockCount = products.filter(p => p.stock <= 0).length;
+  const totalClients = clients.length;
 
   // Données de ventes réelles par jour de la semaine en cours
   const dayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -546,12 +566,14 @@ export default function AdminPage() {
 
             {/* Actions modal */}
             <div className={styles.inspectActions}>
-              <button
-                onClick={() => generatePDFForOrder(inspectingOrder)}
-                className={`${styles.inspectBtn} gradient-button`}
-              >
-                📥 Télécharger Reçu PDF
-              </button>
+              {['delivered', 'shipped'].includes(inspectingOrder.status) && (
+                <button
+                  onClick={() => generatePDFForOrder(inspectingOrder)}
+                  className={`${styles.inspectBtn} gradient-button`}
+                >
+                  📥 Télécharger Reçu PDF
+                </button>
+              )}
               <button
                 onClick={() => setInspectingOrder(null)}
                 className={`${styles.inspectBtn} ${styles.inspectBtnSecondary}`}
@@ -600,6 +622,12 @@ export default function AdminPage() {
             className={`${styles.tabBtn} ${activeTab === 'products' ? styles.tabBtnActive : ''}`}
           >
             🏷️ Gestion Stock ({products.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('clients')}
+            className={`${styles.tabBtn} ${activeTab === 'clients' ? styles.tabBtnActive : ''}`}
+          >
+            👥 Clients ({clients.length})
           </button>
         </aside>
 
@@ -713,18 +741,18 @@ export default function AdminPage() {
                             onClick={() => setInspectingOrder(order)}
                             style={{ cursor: 'pointer' }}
                           >
-                            <td className={styles.td}>{order.payment.reference}</td>
-                            <td className={styles.td}>{order.customer.firstName} {order.customer.lastName}</td>
+                            <td className={styles.td}>{order?.payment?.reference}</td>
+                            <td className={styles.td}>{order?.customer?.firstName} {order?.customer?.lastName}</td>
                             <td className={styles.td}>{new Date(order.date).toLocaleDateString('fr-FR')}</td>
                             <td className={styles.td} style={{ textTransform: 'uppercase', fontSize: '0.8rem' }}>
-                              {order.payment.method === 'momo'
-                                ? `MOMO (${order.payment.provider})`
-                                : order.payment.method === 'direct_transfer'
-                                ? `MM Direct (${order.payment.provider.replace('transfert_direct_', '')})`
-                                : order.payment.method === 'bank_transfer'
+                              {order?.payment?.method === 'momo'
+                                ? `MOMO (${order?.payment?.provider})`
+                                : order?.payment?.method === 'direct_transfer'
+                                ? `MM Direct (${order?.payment?.provider.replace('transfert_direct_', '')})`
+                                : order?.payment?.method === 'bank_transfer'
                                 ? 'Virement Bancaire'
-                                : order.payment.method === 'external_gateway'
-                                ? `Gateway (${order.payment.provider})`
+                                : order?.payment?.method === 'external_gateway'
+                                ? `Gateway (${order?.payment?.provider})`
                                 : 'CARTE'}
                             </td>
                             <td className={styles.td} style={{ fontWeight: 'bold' }}>{formatPrice(order.total)}</td>
@@ -785,21 +813,21 @@ export default function AdminPage() {
                           onClick={() => setInspectingOrder(order)}
                           style={{ cursor: 'pointer' }}
                         >
-                          <td className={styles.td} style={{ fontWeight: 'bold' }}>{order.payment.reference}</td>
+                          <td className={styles.td} style={{ fontWeight: 'bold' }}>{order?.payment?.reference}</td>
                           <td className={styles.td}>
-                            <div>{order.customer.firstName} {order.customer.lastName}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{order.customer.email} | {order.customer.phone}</div>
+                            <div>{order?.customer?.firstName} {order?.customer?.lastName}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{order?.customer?.email} | {order?.customer?.phone}</div>
                           </td>
                           <td className={styles.td}>{new Date(order.date).toLocaleString('fr-FR')}</td>
                           <td className={styles.td} style={{ textTransform: 'uppercase', fontSize: '0.8rem' }}>
-                            {order.payment.method === 'momo'
-                              ? `MOMO (${order.payment.provider})`
-                              : order.payment.method === 'direct_transfer'
-                              ? `MM Direct (${order.payment.provider.replace('transfert_direct_', '')})`
-                              : order.payment.method === 'bank_transfer'
+                            {order?.payment?.method === 'momo'
+                              ? `MOMO (${order?.payment?.provider})`
+                              : order?.payment?.method === 'direct_transfer'
+                              ? `MM Direct (${order?.payment?.provider.replace('transfert_direct_', '')})`
+                              : order?.payment?.method === 'bank_transfer'
                               ? 'Virement Bancaire'
-                              : order.payment.method === 'external_gateway'
-                              ? `Gateway (${order.payment.provider})`
+                              : order?.payment?.method === 'external_gateway'
+                              ? `Gateway (${order?.payment?.provider})`
                               : 'CARTE'}
                           </td>
                           <td className={styles.td} style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{formatPrice(order.total)}</td>
@@ -974,6 +1002,71 @@ export default function AdminPage() {
                   </button>
                 </form>
               </div>
+            </div>
+          )}
+
+          {/* TAB: CLIENTS */}
+          {activeTab === 'clients' && (
+            <div className="glass-card animate-fade" style={{ padding: '24px' }}>
+              <h3 className={styles.cardTitle}>Base de données Clients</h3>
+              {loadingClients ? (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}><div className="loading-spinner" style={{ margin: '0 auto' }}></div></div>
+              ) : clients.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>Aucun client trouvé.</p>
+              ) : (
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th className={styles.th}>Client</th>
+                        <th className={styles.th}>Contact</th>
+                        <th className={styles.th}>Localisation</th>
+                        <th className={styles.th}>Commandes</th>
+                        <th className={styles.th}>Total Dépensé</th>
+                        <th className={styles.th}>Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clients.map((client, idx) => {
+                        const isVIP = client.activeOrders >= 3 || client.totalSpent >= 500000;
+                        return (
+                          <tr key={idx} className={styles.tr}>
+                            <td className={styles.td} style={{ fontWeight: 'bold' }}>
+                              {client.firstName} {client.lastName}
+                            </td>
+                            <td className={styles.td}>
+                              <div style={{ fontSize: '0.85rem' }}>✉️ {client.email}</div>
+                              <div style={{ fontSize: '0.85rem' }}>📞 {client.phone || '-'}</div>
+                            </td>
+                            <td className={styles.td}>
+                              <div style={{ fontSize: '0.85rem' }}>{client.city || '-'}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{client.address}</div>
+                            </td>
+                            <td className={styles.td}>
+                              <div style={{ fontWeight: 'bold' }}>{client.totalOrders}</div>
+                              {client.lastOrderDate && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                  Dernière: {new Date(client.lastOrderDate).toLocaleDateString('fr-FR')}
+                                </div>
+                              )}
+                            </td>
+                            <td className={styles.td} style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+                              {formatPrice(client.totalSpent)}
+                            </td>
+                            <td className={styles.td}>
+                              {isVIP ? (
+                                <span className={styles.statusVIP}>⭐ VIP</span>
+                              ) : (
+                                <span className={styles.statusStandard}>Standard</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </main>

@@ -53,9 +53,12 @@ export async function POST(request) {
 
     // 3. Envoyer l'e-mail de confirmation directement
     try {
-      await sendConfirmationEmail(finalOrder);
+      const emailResult = await sendConfirmationEmail(finalOrder);
+      if (emailResult && emailResult.status) {
+        console.log(`📧 Email de confirmation: ${emailResult.status} (succès: ${emailResult.success})`);
+      }
     } catch (emailErr) {
-      console.error('Erreur lors de la tentative d\'envoi d\'email:', emailErr);
+      console.error('⚠️ Erreur email (non-bloquante pour la commande):', emailErr.message || emailErr);
     }
     
     return NextResponse.json({ success: true, order: finalOrder });
