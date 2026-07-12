@@ -1,121 +1,126 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 
 export async function GET() {
   const resendApiKey = process.env.RESEND_API_KEY;
+  const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
   const fromAddress = process.env.RESEND_FROM || 'BAYA SHOP <onboarding@resend.dev>';
   const testTo = process.env.CONTACT_EMAIL || 'eugenebaya6@gmail.com';
 
   const config = {
     hasResendKey: !!resendApiKey,
-    resendKeyPrefix: resendApiKey
-      ? resendApiKey.substring(0, 10) + '...'
-      : 'NON DÉFINI',
-    resendKeyLength: resendApiKey ? resendApiKey.length : 0,
+    resendKeyPrefix: resendApiKey ? resendApiKey.trim().substring(0, 10) + '...' : 'NON DÉFINI',
+    hasWebhookUrl: !!webhookUrl,
+    webhookUrlPrefix: webhookUrl ? webhookUrl.substring(0, 40) + '...' : 'NON DÉFINI',
     fromAddress,
     testTo,
     environment: process.env.NODE_ENV,
-    nodeVersion: process.version,
   };
 
-  // ── 1. Clé manquante ──
-  if (!resendApiKey) {
-    return NextResponse.json({
-      success: false,
-      step: 'config_check',
-      config,
-      error: 'Variable RESEND_API_KEY manquante. Ajoutez-la dans Railway > Variables.',
-    });
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f8f9fa; border-radius: 8px;">
+      <div style="background: #080b1a; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 3px solid #ff7a00;">
+        <h1 style="color: white; margin: 0; font-size: 20px;">BAYA SHOP</h1>
+      </div>
+      <div style="background: white; padding: 25px; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #10b981; margin-top: 0;">✅ Configuration réussie !</h2>
+        <p>Si vous recevez cet e-mail, votre service d'envoi d'e-mails est parfaitement configuré sur Railway.</p>
+        <p style="color: #666; font-size: 13px; margin-top: 20px;">Envoyé le : ${new Date().toLocaleString('fr-FR')}</p>
+      </div>
+    </div>
+  `;
+
+  // ── Méthode 1 : Resend via fetch natif (pas de SDK) ──
+  if (resendApiKey) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromAddress,
+          to: [testTo],
+          subject: '✅ Test Resend - BAYA SHOP fonctionne !',
+          html: emailHtml,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+      const result = await response.json();
+
+      if (response.ok) {
+        return NextResponse.json({
+          success: true,
+          method: 'resend',
+          config,
+          message: `✅ E-mail envoyé via Resend à ${testTo} !`,
+          emailId: result.id,
+        });
+      } else {
+        // Resend a répondu mais avec une erreur (ex: clé invalide, domaine non vérifié)
+        console.error('Resend API error:', result);
+        // On tente le webhook en fallback
+      }
+    } catch (err) {
+      // Resend injoignable (ETIMEDOUT) → on tente le webhook
+      console.error('Resend fetch failed:', err.message);
+    }
   }
 
-  // ── 2. Test de connectivité réseau vers api.resend.com ──
-  let networkOk = false;
-  let networkError = null;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const resp = await fetch('https://api.resend.com/', {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    networkOk = true; // même une 401 signifie que le réseau fonctionne
-  } catch (err) {
-    networkError = err.message;
-  }
+  // ── Méthode 2 : Gmail Webhook (fallback) ──
+  if (webhookUrl) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
-  if (!networkOk) {
-    return NextResponse.json({
-      success: false,
-      step: 'network_check',
-      config,
-      error: `Impossible de joindre api.resend.com depuis ce serveur.`,
-      networkError,
-      hint: 'Railway bloque peut-être les connexions sortantes. Vérifiez que votre plan Railway autorise le trafic sortant HTTPS.',
-    });
-  }
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          to: testTo,
+          subject: '✅ Test Webhook - BAYA SHOP fonctionne !',
+          html: emailHtml,
+        }),
+        signal: controller.signal,
+      });
 
-  // ── 3. Envoi de l'email via Resend ──
-  try {
-    const resend = new Resend(resendApiKey.trim()); // .trim() pour enlever espaces invisibles
+      clearTimeout(timeout);
+      const result = await response.json();
 
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: [testTo],
-      subject: '✅ Test Resend - BAYA SHOP fonctionne !',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f8f9fa; border-radius: 8px;">
-          <div style="background: #080b1a; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 3px solid #ff7a00;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">BAYA SHOP</h1>
-          </div>
-          <div style="background: white; padding: 25px; border-radius: 0 0 8px 8px;">
-            <h2 style="color: #10b981; margin-top: 0;">✅ Configuration réussie !</h2>
-            <p>Si vous recevez cet e-mail, votre service <strong>Resend</strong> est parfaitement configuré sur Railway.</p>
-            <p style="color: #666; font-size: 13px; margin-top: 20px;">Envoyé le : ${new Date().toLocaleString('fr-FR')}</p>
-          </div>
-        </div>
-      `,
-    });
-
-    if (error) {
+      if (result.success) {
+        return NextResponse.json({
+          success: true,
+          method: 'gmail_webhook',
+          config,
+          message: `✅ E-mail envoyé via Gmail Webhook à ${testTo} !`,
+        });
+      } else {
+        return NextResponse.json({
+          success: false,
+          method: 'gmail_webhook',
+          config,
+          error: result.error || 'Erreur webhook inconnue',
+        });
+      }
+    } catch (err) {
       return NextResponse.json({
         success: false,
-        step: 'resend_api',
+        method: 'gmail_webhook',
         config,
-        networkOk,
-        error: `Resend API a répondu avec une erreur: ${error.message || JSON.stringify(error)}`,
-        resendError: error,
-        hint: error.message?.includes('domain')
-          ? "Vous devez vérifier un domaine sur Resend ou utiliser l'adresse onboarding@resend.dev comme expéditeur."
-          : error.message?.includes('Invalid API Key') || error.message?.includes('401')
-          ? 'La clé API est invalide. Vérifiez-la sur resend.com/api-keys.'
-          : undefined,
+        error: `Webhook injoignable: ${err.message}`,
       });
     }
-
-    return NextResponse.json({
-      success: true,
-      step: 'done',
-      config,
-      networkOk,
-      message: `✅ E-mail de test envoyé avec succès à ${testTo} ! Vérifiez votre boîte de réception.`,
-      emailId: data.id,
-    });
-
-  } catch (err) {
-    return NextResponse.json({
-      success: false,
-      step: 'send_exception',
-      config,
-      networkOk,
-      errorName: err.name,
-      errorMessage: err.message,
-      errorCode: err.code,
-      errorCommand: err.command,
-      fullError: err.toString(),
-      hint: err.code === 'ETIMEDOUT'
-        ? 'Timeout réseau. Le serveur Railway ne peut pas atteindre api.resend.com.'
-        : undefined,
-    });
   }
+
+  // ── Aucune méthode configurée ──
+  return NextResponse.json({
+    success: false,
+    config,
+    error: 'Aucun service email configuré. Ajoutez RESEND_API_KEY ou GMAIL_WEBHOOK_URL dans Railway > Variables.',
+  });
 }

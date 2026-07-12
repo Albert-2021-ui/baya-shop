@@ -42,12 +42,10 @@ Dans Railway, allez dans **Variables** et ajoutez ces valeurs :
 | `BANK_ACCOUNT_NAME` | `Albert BAYA` |
 | `BANK_ACCOUNT_NUMBER` | `BJ061120010086600170007` |
 | `BANK_NAME` | `BOA` |
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_SECURE` | `false` |
-| `SMTP_USER` | `eugenebaya6@gmail.com` |
-| `SMTP_PASS` | `lfvb cile ynhq vfln` |
-| `SMTP_FROM` | `BAYA SHOP <eugenebaya6@gmail.com>` |
+| `RESEND_API_KEY` | Votre clé API Resend (depuis https://resend.com/api-keys) |
+| `RESEND_FROM` | `BAYA SHOP <onboarding@resend.dev>` |
+| `CONTACT_EMAIL` | `eugenebaya6@gmail.com` |
+| `GMAIL_WEBHOOK_URL` | (optionnel) URL webhook Gmail Apps Script |
 | `NODE_ENV` | `production` |
 
 ### Étape 4 - Volume persistant (pour SQLite)

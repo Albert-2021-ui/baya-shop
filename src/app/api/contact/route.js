@@ -30,9 +30,9 @@ export async function POST(request) {
       return NextResponse.json({
         success: true,
         status: result.status,
-        message: result.status === 'sent_via_smtp' 
+        message: (result.status === 'sent_via_resend' || result.status === 'sent_via_smtp' || result.status === 'sent_via_webhook')
           ? 'Email sent successfully.' 
-          : 'Email logged locally (SMTP not configured).'
+          : 'Email logged locally (email service not configured).'
       });
     } else {
       return NextResponse.json(

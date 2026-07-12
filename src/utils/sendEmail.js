@@ -1,11 +1,152 @@
-import nodemailer from 'nodemailer';
 import fs from 'fs/promises';
 import path from 'path';
-import dns from 'dns/promises';
 import { generateInvoicePDF } from './generateInvoicePDF';
 
 const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json');
 
+/**
+ * Envoie un email via Resend API fetch natif (priorité) ou Gmail Webhook (fallback).
+ * @param {object} options - { to, subject, html, replyTo?, attachments? }
+ * @returns {Promise<{success: boolean, status: string, error?: string}>}
+ */
+async function sendViaResendOrWebhook({ to, subject, html, replyTo, attachments }) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
+  const fromAddress = process.env.RESEND_FROM || process.env.SMTP_FROM || 'BAYA SHOP <onboarding@resend.dev>';
+
+  // ── Méthode 1 : Resend API via fetch natif (sans SDK) ──
+  if (resendApiKey) {
+    try {
+      const emailPayload = {
+        from: fromAddress,
+        to: [to],
+        subject,
+        html,
+      };
+
+      if (replyTo) {
+        emailPayload.reply_to = replyTo;
+      }
+
+      // Pièces jointes : encoder en base64 pour l'API Resend
+      if (attachments && attachments.length > 0) {
+        emailPayload.attachments = attachments.map(att => ({
+          filename: att.filename,
+          content: Buffer.isBuffer(att.content)
+            ? att.content.toString('base64')
+            : att.content,
+        }));
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailPayload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`Resend API error: ${data.message || JSON.stringify(data)}`);
+      }
+
+      console.log(`✅ E-mail envoyé via Resend à ${to} (ID: ${data.id})`);
+      return { success: true, status: 'sent_via_resend', messageId: data.id };
+    } catch (resendErr) {
+      console.error('❌ Échec Resend:', resendErr.message);
+      // Fallback vers webhook si Resend échoue
+      if (webhookUrl) {
+        console.log('⏩ Tentative via Gmail Webhook...');
+      } else {
+        return { success: false, status: 'resend_failed', error: resendErr.message };
+      }
+    }
+  }
+
+  // ── Méthode 2 : Gmail Webhook (fallback) ──
+  if (webhookUrl) {
+    try {
+      const webhookPayload = { to, subject, html };
+      if (replyTo) webhookPayload.replyTo = replyTo;
+
+      // Ajouter le PDF en base64 si présent
+      if (attachments && attachments.length > 0) {
+        const pdfAtt = attachments[0];
+        webhookPayload.pdfBase64 = Buffer.isBuffer(pdfAtt.content)
+          ? pdfAtt.content.toString('base64')
+          : pdfAtt.content;
+        webhookPayload.pdfName = pdfAtt.filename;
+      }
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(webhookPayload),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log(`✅ E-mail envoyé via Gmail Webhook à ${to}`);
+        return { success: true, status: 'sent_via_webhook' };
+      } else {
+        throw new Error(result.error || 'Erreur inconnue du Webhook');
+      }
+    } catch (webhookErr) {
+      console.error('❌ Échec Webhook:', webhookErr.message);
+      return { success: false, status: 'webhook_failed', error: webhookErr.message };
+    }
+  }
+
+  // Aucune méthode configurée
+  console.warn('⚠️ Aucun service d\'email configuré (RESEND_API_KEY ou GMAIL_WEBHOOK_URL manquant)');
+  return { success: false, status: 'no_email_service', error: 'Aucun service d\'email configuré.' };
+}
+
+/**
+ * Logger un email localement (pour historique / debug)
+ */
+async function logEmailLocally({ to, subject, status, html, hasAttachment, attachmentName }) {
+  let loggedEmails = [];
+  try {
+    const existingData = await fs.readFile(emailsFilePath, 'utf8');
+    loggedEmails = JSON.parse(existingData);
+  } catch (e) {
+    try {
+      await fs.mkdir(path.dirname(emailsFilePath), { recursive: true });
+    } catch (_) {}
+  }
+
+  const emailLogEntry = {
+    id: loggedEmails.length + 1,
+    to,
+    subject,
+    date: new Date().toISOString(),
+    status,
+    htmlBody: html,
+    hasAttachment: !!hasAttachment,
+    attachmentName: attachmentName || null,
+  };
+
+  try {
+    loggedEmails.push(emailLogEntry);
+    await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
+    console.log(`📝 E-mail loggé localement (statut: ${status})`);
+  } catch (err) {
+    console.warn('Impossible de logger l\'e-mail localement (système de fichiers en lecture seule ?)', err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// E-mail de confirmation de commande
+// ═══════════════════════════════════════════════════════════
 export async function sendConfirmationEmail(order) {
   try {
     if (!order) {
@@ -142,147 +283,49 @@ export async function sendConfirmationEmail(order) {
       </html>
     `;
 
-    // 1.5 Générer le PDF de la facture
+    // 2. Générer le PDF de la facture
     const pdfBuffer = await generateInvoicePDF(order);
 
-    const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
-    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-    
-    let sentInfo = null;
-    let emailStatus = 'logged_locally';
-
-    if (webhookUrl) {
-      try {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' }, // Avoid CORS preflight on Apps Script
-          body: JSON.stringify({
-            to: customerEmail,
-            subject: emailSubject,
-            html: emailHtml,
-            pdfBase64: pdfBuffer.toString('base64'),
-            pdfName: `Facture_${orderRef}.pdf`
-          })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-          emailStatus = 'sent_via_webhook';
-          console.log(`E-mail envoyé avec succès via Webhook à ${customerEmail}`);
-        } else {
-          throw new Error(result.error || 'Erreur inconnue du Webhook');
+    // 3. Envoyer l'email via Resend ou Webhook
+    const sendResult = await sendViaResendOrWebhook({
+      to: customerEmail,
+      subject: emailSubject,
+      html: emailHtml,
+      attachments: [
+        {
+          filename: `Facture_${orderRef}.pdf`,
+          content: pdfBuffer,
         }
-      } catch (webhookErr) {
-        console.error('Échec de l\'envoi via Webhook, enregistrement en local...', webhookErr);
-      }
-    } else if (hasSmtpConfig) {
-      try {
-        const hostName = process.env.SMTP_HOST || 'smtp.gmail.com';
-        let resolvedHost = hostName;
-        try {
-          const lookupResult = await dns.lookup(hostName, { family: 4 });
-          resolvedHost = lookupResult.address;
-        } catch (err) {
-          console.error(`Failed to resolve ${hostName} to IPv4:`, err);
-        }
+      ]
+    });
 
-        const transportConfig = {
-          host: resolvedHost,
-          port: parseInt(process.env.SMTP_PORT) || 587,
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-          },
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 15000,
-          tls: {
-            servername: hostName,
-            rejectUnauthorized: false
-          }
-        };
+    const emailStatus = sendResult.success ? sendResult.status : 'logged_locally';
 
-        const transporter = nodemailer.createTransport(transportConfig);
-
-        // Vérifier la connexion SMTP avant d'envoyer
-        await transporter.verify();
-        console.log('Connexion SMTP vérifiée avec succès.');
-
-        sentInfo = await transporter.sendMail({
-          from: process.env.SMTP_FROM || process.env.SMTP_USER,
-          to: customerEmail,
-          subject: emailSubject,
-          html: emailHtml,
-          attachments: [
-            {
-              filename: `Facture_${orderRef}.pdf`,
-              content: pdfBuffer,
-              contentType: 'application/pdf'
-            }
-          ]
-        });
-        
-        emailStatus = 'sent_via_smtp';
-        console.log(`E-mail envoyé avec succès via SMTP à ${customerEmail}`);
-      } catch (smtpError) {
-        console.error('Échec de l\'envoi via SMTP, enregistrement en local...');
-        console.error(`Code d'erreur SMTP: ${smtpError.responseCode || 'N/A'}`);
-        console.error(`Message: ${smtpError.message}`);
-        if (smtpError.responseCode === 535) {
-          console.error('⚠️  SOLUTION: Votre mot de passe d\'application Gmail est invalide ou expiré.');
-          console.error('   → Allez sur https://myaccount.google.com/apppasswords pour en générer un nouveau.');
-          console.error('   → Mettez à jour SMTP_PASS dans .env.local avec le nouveau mot de passe.');
-        }
-      }
-    }
-
-    // 3. Fallback : Enregistrer le mail généré en local dans sent_emails.json
-    let loggedEmails = [];
-    try {
-      const existingData = await fs.readFile(emailsFilePath, 'utf8');
-      loggedEmails = JSON.parse(existingData);
-    } catch (e) {
-      // Si le fichier n'existe pas, on l'initialisera
-      try {
-        await fs.mkdir(path.dirname(emailsFilePath), { recursive: true });
-      } catch(_) {}
-      await fs.writeFile(emailsFilePath, JSON.stringify([], null, 2), 'utf8');
-    }
-
-    // Sauvegarder la facture PDF en local pour pouvoir la consulter plus tard
+    // 4. Sauvegarder la facture PDF en local
     try {
       const invoicesDir = path.join(process.cwd(), 'src', 'data', 'invoices');
       await fs.mkdir(invoicesDir, { recursive: true });
       await fs.writeFile(path.join(invoicesDir, `Facture_${orderRef}.pdf`), pdfBuffer);
-    } catch(err) {
+    } catch (err) {
       console.error('Impossible de sauvegarder la facture en local', err);
     }
 
-    const emailLogEntry = {
-      id: loggedEmails.length + 1,
+    // 5. Logger localement
+    await logEmailLocally({
       to: customerEmail,
       subject: emailSubject,
-      date: new Date().toISOString(),
       status: emailStatus,
-      smtpInfo: sentInfo,
-      htmlBody: emailHtml,
+      html: emailHtml,
       hasAttachment: true,
-      attachmentName: `Facture_${orderRef}.pdf`
-    };
-
-    try {
-      loggedEmails.push(emailLogEntry);
-      await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
-      console.log(`E-mail loggé localement dans : src/data/sent_emails.json`);
-    } catch(err) {
-      console.warn('Impossible de logger l\'e-mail localement (environnement en lecture seule ?)', err.message);
-    }
+      attachmentName: `Facture_${orderRef}.pdf`,
+    });
 
     return {
       success: true,
       status: emailStatus,
-      message: (emailStatus === 'sent_via_smtp' || emailStatus === 'sent_via_webhook') ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP/Webhook non configuré).'
+      message: sendResult.success
+        ? 'E-mail envoyé avec succès.'
+        : 'E-mail enregistré localement (service d\'email non disponible).',
     };
 
   } catch (error) {
@@ -294,6 +337,9 @@ export async function sendConfirmationEmail(order) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// E-mail de contact
+// ═══════════════════════════════════════════════════════════
 export async function sendContactEmail(formData) {
   try {
     if (!formData) {
@@ -301,7 +347,7 @@ export async function sendContactEmail(formData) {
     }
 
     const { name, email, phone, subject, message } = formData;
-    const recipientEmail = process.env.SMTP_USER || 'eugenebaya6@gmail.com';
+    const recipientEmail = process.env.CONTACT_EMAIL || process.env.SMTP_USER || 'eugenebaya6@gmail.com';
     const emailSubject = `Nouveau message de contact - ${subject} (${name})`;
 
     const emailHtml = `
@@ -357,119 +403,30 @@ export async function sendContactEmail(formData) {
       </html>
     `;
 
-    const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
-    const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-    let sentInfo = null;
-    let emailStatus = 'logged_locally';
-
-    if (webhookUrl) {
-      try {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            to: recipientEmail,
-            replyTo: email,
-            subject: emailSubject,
-            html: emailHtml
-          })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-          emailStatus = 'sent_via_webhook';
-          console.log(`E-mail de contact envoyé avec succès via Webhook à ${recipientEmail}`);
-        } else {
-          throw new Error(result.error || 'Erreur inconnue du Webhook');
-        }
-      } catch (webhookErr) {
-        console.error('Échec de l\'envoi via Webhook, enregistrement en local...', webhookErr);
-      }
-    } else if (hasSmtpConfig) {
-      try {
-        const hostName = process.env.SMTP_HOST || 'smtp.gmail.com';
-        let resolvedHost = hostName;
-        try {
-          const lookupResult = await dns.lookup(hostName, { family: 4 });
-          resolvedHost = lookupResult.address;
-        } catch (err) {
-          console.error(`Failed to resolve ${hostName} to IPv4:`, err);
-        }
-
-        const transportConfig = {
-          host: resolvedHost,
-          port: parseInt(process.env.SMTP_PORT) || 587,
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-          },
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 15000,
-          tls: {
-            servername: hostName,
-            rejectUnauthorized: false
-          }
-        };
-
-        const transporter = nodemailer.createTransport(transportConfig);
-        await transporter.verify();
-
-        sentInfo = await transporter.sendMail({
-          from: process.env.SMTP_FROM || process.env.SMTP_USER,
-          to: recipientEmail,
-          replyTo: email,
-          subject: emailSubject,
-          html: emailHtml
-        });
-        emailStatus = 'sent_via_smtp';
-        console.log(`E-mail de contact envoyé avec succès via SMTP à ${recipientEmail}`);
-      } catch (smtpError) {
-        console.error('Échec de l\'envoi via SMTP, enregistrement en local...');
-        console.error(`Code d'erreur SMTP: ${smtpError.responseCode || 'N/A'}`);
-        console.error(`Message: ${smtpError.message}`);
-        if (smtpError.responseCode === 535) {
-          console.error('⚠️  SOLUTION: Votre mot de passe d\'application Gmail est invalide ou expiré.');
-          console.error('   → Allez sur https://myaccount.google.com/apppasswords pour en générer un nouveau.');
-          console.error('   → Mettez à jour SMTP_PASS dans .env.local avec le nouveau mot de passe.');
-        }
-      }
-    }
-
-    // Sauvegarder localement
-    let loggedEmails = [];
-    try {
-      const existingData = await fs.readFile(emailsFilePath, 'utf8');
-      loggedEmails = JSON.parse(existingData);
-    } catch (e) {
-      try {
-        await fs.mkdir(path.dirname(emailsFilePath), { recursive: true });
-      } catch(_) {}
-      await fs.writeFile(emailsFilePath, JSON.stringify([], null, 2), 'utf8');
-    }
-
-    const emailLogEntry = {
-      id: loggedEmails.length + 1,
+    // Envoyer via Resend ou Webhook
+    const sendResult = await sendViaResendOrWebhook({
       to: recipientEmail,
       subject: emailSubject,
-      date: new Date().toISOString(),
-      status: emailStatus,
-      smtpInfo: sentInfo,
-      htmlBody: emailHtml
-    };
+      html: emailHtml,
+      replyTo: email,
+    });
 
-    try {
-      loggedEmails.push(emailLogEntry);
-      await fs.writeFile(emailsFilePath, JSON.stringify(loggedEmails, null, 2), 'utf8');
-    } catch(err) {
-      console.warn('Impossible de logger le contact localement', err.message);
-    }
+    const emailStatus = sendResult.success ? sendResult.status : 'logged_locally';
+
+    // Logger localement
+    await logEmailLocally({
+      to: recipientEmail,
+      subject: emailSubject,
+      status: emailStatus,
+      html: emailHtml,
+    });
 
     return {
       success: true,
       status: emailStatus,
-      message: (emailStatus === 'sent_via_smtp' || emailStatus === 'sent_via_webhook') ? 'E-mail envoyé.' : 'E-mail enregistré localement pour le test (SMTP/Webhook non configuré).'
+      message: sendResult.success
+        ? 'E-mail envoyé avec succès.'
+        : 'E-mail enregistré localement (service d\'email non disponible).',
     };
   } catch (error) {
     console.error('Erreur dans l\'utilitaire d\'envoi d\'e-mail de contact:', error);
