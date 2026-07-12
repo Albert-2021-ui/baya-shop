@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  // Accepte plusieurs noms de variables possibles
+  // Fallback codé en dur si Railway n'a pas les variables
   const resendApiKey =
     process.env.RESEND_API_KEY ||
     process.env.RESEND_KEY ||
-    process.env.RESEND_API;
+    process.env.RESEND_API ||
+    're_CYe1WrwC_3ejGfiHH439h1NRWATYw615J';
 
   const webhookUrl =
     process.env.GMAIL_WEBHOOK_URL ||
     process.env.GMAIL_WEBHOOK_API_KEY ||
     process.env.WEBHOOK_URL ||
-    process.env.GMAIL_WEBHOOK;
+    process.env.GMAIL_WEBHOOK ||
+    'https://script.google.com/macros/s/AKfycby0__BIyN-BlUm6Qvq67I0wZThlElyGxuCuzHPZx20MnqjcTRYzUKF4mQH8s-Y_eH_yaQ/exec';
 
   const fromAddress = process.env.RESEND_FROM || 'BAYA SHOP <onboarding@resend.dev>';
   const testTo = process.env.CONTACT_EMAIL || 'eugenebaya6@gmail.com';
@@ -39,7 +41,7 @@ export async function GET() {
     </div>
   `;
 
-  // ── Méthode 1 : Resend via fetch natif (pas de SDK) ──
+  // ── Méthode 1 : Resend via fetch natif ──
   if (resendApiKey) {
     try {
       const controller = new AbortController();
@@ -71,13 +73,10 @@ export async function GET() {
           message: `✅ E-mail envoyé via Resend à ${testTo} !`,
           emailId: result.id,
         });
-      } else {
-        // Resend a répondu mais avec une erreur (ex: clé invalide, domaine non vérifié)
-        console.error('Resend API error:', result);
-        // On tente le webhook en fallback
       }
+      // Resend a échoué → on tombe sur le webhook
+      console.error('Resend response error:', result);
     } catch (err) {
-      // Resend injoignable (ETIMEDOUT) → on tente le webhook
       console.error('Resend fetch failed:', err.message);
     }
   }
@@ -109,14 +108,14 @@ export async function GET() {
           config,
           message: `✅ E-mail envoyé via Gmail Webhook à ${testTo} !`,
         });
-      } else {
-        return NextResponse.json({
-          success: false,
-          method: 'gmail_webhook',
-          config,
-          error: result.error || 'Erreur webhook inconnue',
-        });
       }
+
+      return NextResponse.json({
+        success: false,
+        method: 'gmail_webhook',
+        config,
+        error: result.error || 'Erreur webhook inconnue',
+      });
     } catch (err) {
       return NextResponse.json({
         success: false,
@@ -127,10 +126,9 @@ export async function GET() {
     }
   }
 
-  // ── Aucune méthode configurée ──
   return NextResponse.json({
     success: false,
     config,
-    error: 'Aucun service email configuré. Ajoutez RESEND_API_KEY ou GMAIL_WEBHOOK_URL dans Railway > Variables.',
+    error: 'Aucun service email disponible.',
   });
 }

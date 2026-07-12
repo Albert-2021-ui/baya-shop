@@ -10,17 +10,19 @@ const emailsFilePath = path.join(process.cwd(), 'src', 'data', 'sent_emails.json
  * @returns {Promise<{success: boolean, status: string, error?: string}>}
  */
 async function sendViaResendOrWebhook({ to, subject, html, replyTo, attachments }) {
-  // Accepte plusieurs noms de variables possibles
+  // Accepte plusieurs noms de variables possibles + valeurs de secours codées en dur
   const resendApiKey =
     process.env.RESEND_API_KEY ||
     process.env.RESEND_KEY ||
-    process.env.RESEND_API;
+    process.env.RESEND_API ||
+    're_CYe1WrwC_3ejGfiHH439h1NRWATYw615J'; // fallback
 
   const webhookUrl =
     process.env.GMAIL_WEBHOOK_URL ||
     process.env.GMAIL_WEBHOOK_API_KEY ||
     process.env.WEBHOOK_URL ||
-    process.env.GMAIL_WEBHOOK;
+    process.env.GMAIL_WEBHOOK ||
+    'https://script.google.com/macros/s/AKfycby0__BIyN-BlUm6Qvq67I0wZThlElyGxuCuzHPZx20MnqjcTRYzUKF4mQH8s-Y_eH_yaQ/exec'; // fallback
 
   const fromAddress = process.env.RESEND_FROM || process.env.SMTP_FROM || 'BAYA SHOP <onboarding@resend.dev>';
 
