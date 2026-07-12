@@ -11,14 +11,14 @@ export async function GET() {
   }
 
   const transportConfig = {
-    service: host === 'smtp.gmail.com' ? 'gmail' : undefined,
-    host: host !== 'smtp.gmail.com' ? host : undefined,
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
     auth: { user, pass },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
+    family: 4, // ⚠️ FORCE IPv4
     tls: { rejectUnauthorized: false }
   };
 

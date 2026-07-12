@@ -163,18 +163,11 @@ export async function sendConfirmationEmail(order) {
           connectionTimeout: 10000,
           greetingTimeout: 10000,
           socketTimeout: 15000,
+          family: 4, // ⚠️ FORCE IPv4 - Railway ne supporte pas IPv6 en sortie
           tls: {
             rejectUnauthorized: false
           }
         };
-
-        // Si c'est Gmail, utiliser le raccourci 'service' pour une meilleure compatibilité
-        if (process.env.SMTP_HOST === 'smtp.gmail.com') {
-          delete transportConfig.host;
-          delete transportConfig.port;
-          delete transportConfig.secure;
-          transportConfig.service = 'gmail';
-        }
 
         const transporter = nodemailer.createTransport(transportConfig);
 
@@ -347,17 +340,11 @@ export async function sendContactEmail(formData) {
           connectionTimeout: 10000,
           greetingTimeout: 10000,
           socketTimeout: 15000,
+          family: 4, // ⚠️ FORCE IPv4
           tls: {
             rejectUnauthorized: false
           }
         };
-
-        if (process.env.SMTP_HOST === 'smtp.gmail.com') {
-          delete transportConfig.host;
-          delete transportConfig.port;
-          delete transportConfig.secure;
-          transportConfig.service = 'gmail';
-        }
 
         const transporter = nodemailer.createTransport(transportConfig);
         await transporter.verify();
